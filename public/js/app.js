@@ -112,6 +112,8 @@ function waitingCount() {
   return allLeads().filter((l) => l.stage === "new").length;
 }
 
+const G_MARK = raw('<svg viewBox="0 0 32 33" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M17.06 19.61V14.89H30.83V31.51H26.58L25.76 27.44C23.51 30.65 20.18 32.21 15.72 32.21C11.26 32.21 7.71 30.73 5.03 27.79C2.34 24.85 1 20.95 1 16.1C1 11.26 2.34 7.36 5.11 4.37C7.84 1.47 11.56 0 16.24 0C20.09 0 23.29 1 25.89 2.94C28.4 4.93 29.96 7.58 30.48 10.95H24.46C24.03 9.13 23.08 7.71 21.61 6.67C20.13 5.63 18.36 5.11 16.28 5.11C13.42 5.11 11.22 6.1 9.57 8.05C7.93 10.04 7.1 12.73 7.1 16.1C7.1 19.52 7.93 22.21 9.62 24.16C11.26 26.15 13.55 27.1 16.5 27.1C18.79 27.1 20.78 26.41 22.43 25.02C24.07 23.64 24.94 21.86 25.11 19.61H17.06Z"/></svg>');
+
 function shell() {
   const groups = [];
   for (const v of VIEWS) {
@@ -123,7 +125,7 @@ function shell() {
   return html`
   <div class="shell">
     <nav class="side" aria-label="Sections">
-      <div class="brand"><div class="brand-mark" aria-hidden="true">G</div><div><b>G Developments</b><span>Media Command Center</span></div></div>
+      <div class="brand"><div class="brand-mark" aria-hidden="true">${G_MARK}</div><div><b>G Developments</b><span>Media Command Center</span></div></div>
       ${groups.map(
         (g) => html`<div class="nav-group">${g.name ? html`<span>${g.name}</span>` : ""}<div class="nav">${g.items.map(
           (v) => html`<a href="#/${v.id}" data-nav="${v.id}">${icon(v.icon)}<span>${v.label}</span>${v.id === "leads" ? html`<span class="count" data-waiting hidden></span>` : ""}</a>`,
@@ -136,7 +138,7 @@ function shell() {
     </nav>
     <div class="content">
       <header class="appbar">
-        <div class="appbar-brand"><div class="brand-mark" aria-hidden="true">G</div><b>Media Command</b></div>
+        <div class="appbar-brand"><div class="brand-mark" aria-hidden="true">${G_MARK}</div><b>Media Command</b></div>
         <div class="appbar-status small" data-appbar-status></div>
         <div class="demo-switch"><span id="demo-label">Demo</span><button type="button" class="switch" role="switch" aria-checked="false" aria-labelledby="demo-label" data-demo-toggle title="Show made-up campaigns and leads"></button></div>
       </header>
