@@ -52,7 +52,10 @@ export const PERIODS = [
   ["today", "Today"],
   ["yesterday", "Yesterday"],
   ["last_7d", "7 days"],
+  ["last_14d", "14 days"],
   ["last_30d", "30 days"],
+  ["last_60d", "60 days"],
+  ["last_90d", "90 days"],
   ["this_month", "This month"],
   ["maximum", "Lifetime"],
 ];

@@ -4,7 +4,7 @@
 // NOTHING HERE IS REAL. In demo mode every /api call is answered by this file
 // in the browser: no request reaches the server or Meta.
 
-const DAYS = 45; // index 0 = 44 days ago, index 44 = today
+const DAYS = 95; // index 0 = 94 days ago, index 94 = today
 const DEMO_SETTINGS = { connected: true, demo: true, account: "act_demo", readOnly: false, leadForms: true, stagesToMeta: true, version: "demo", maxDailyBudget: null };
 
 function rng(seed) {
@@ -277,10 +277,13 @@ function rangeIdx(range) {
   const today = DAYS - 1;
   if (range === "today") return [today, today];
   if (range === "yesterday") return [today - 1, today - 1];
+  if (range === "last_7d") return [today - 7, today - 1];
+  if (range === "last_14d") return [today - 14, today - 1];
   if (range === "last_30d") return [today - 30, today - 1];
+  if (range === "last_60d") return [today - 60, today - 1];
+  if (range === "last_90d") return [today - 90, today - 1];
   if (range === "this_month") return [today - (new Date().getDate() - 1), today];
   if (range === "maximum") return [0, today];
-  if (range === "last_14d") return [today - 14, today - 1];
   return [today - 7, today - 1]; // last_7d (Meta's 7 days end yesterday)
 }
 

@@ -97,7 +97,7 @@ function renderCampaignSparkline(daily) {
   const plotH = H - padT - padB;
   const maxSpend = Math.max(50, ...daily.map((d) => d.spend || 0));
   const stepX = plotW / Math.max(1, daily.length);
-  const barW = Math.max(4, Math.min(20, stepX * 0.62));
+  const barW = Math.max(2, Math.min(20, stepX * 0.65));
   return html`
   <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
     <div class="row between small muted" style="margin-bottom:4px">

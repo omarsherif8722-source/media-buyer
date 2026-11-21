@@ -180,7 +180,7 @@ export function render(ctx) {
     </div></div>
   <div class="note" style="margin-bottom:14px">Leads are kept <b>in this browser only</b>, not on the server or GitHub. Use Backup to move them to your phone or laptop, and keep a backup after each day.${ctx.settings?.leadForms ? "" : " To pull Meta lead-form leads straight in, set META_PAGE_ID on the server; until then, download them from Meta and use Import CSV."}</div>
   <div class="row between wrap" style="margin-bottom:10px">
-    <div class="seg" role="group" aria-label="Dates">${[["7", "7 days"], ["30", "30 days"], ["90", "90 days"], ["all", "All time"]].map(([v, l]) => html`<button type="button" data-range="${v}" aria-pressed="${range === v}">${l}</button>`)}</div>
+    <div class="seg" role="group" aria-label="Dates">${[["7", "7 days"], ["14", "14 days"], ["30", "30 days"], ["60", "60 days"], ["90", "90 days"], ["all", "All time"]].map(([v, l]) => html`<button type="button" data-range="${v}" aria-pressed="${range === v}">${l}</button>`)}</div>
     ${ctx.settings?.stagesToMeta ? html`<label class="row small"><input type="checkbox" data-auto ${auto ? raw("checked") : ""}> Send valid stages to Meta automatically</label>` : ""}
   </div>
   <div class="kpis" style="margin-bottom:14px">

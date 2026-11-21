@@ -46,7 +46,7 @@ function renderDailyChart(daily, t) {
   const maxValid = Math.max(4, ...daily.map((d) => Math.max(d.valid || 0, d.leads || 0)));
   const count = daily.length;
   const stepX = plotW / Math.max(1, count);
-  const barW = Math.max(6, Math.min(28, stepX * 0.58));
+  const barW = Math.max(2, Math.min(28, stepX * 0.65));
 
   const ptsLeads = [];
   const ptsValid = [];
@@ -92,7 +92,8 @@ function renderDailyChart(daily, t) {
       ${daily.map((d, i) => {
         const cx = padL + i * stepX + stepX / 2;
         const yV = padT + plotH - ((d.valid || 0) / maxValid) * plotH;
-        return html`<circle cx="${cx.toFixed(1)}" cy="${yV.toFixed(1)}" r="3.4" fill="var(--good)" stroke="var(--card)" stroke-width="1.5">
+        const r = count > 45 ? 1.8 : count > 20 ? 2.5 : 3.4;
+        return html`<circle cx="${cx.toFixed(1)}" cy="${yV.toFixed(1)}" r="${r}" fill="var(--good)" stroke="var(--card)" stroke-width="${count > 45 ? 0.8 : 1.5}">
           <title>${d.date}: ${n(d.valid)} valid buyers (${n(d.reserved)} reserved)</title>
         </circle>`;
       })}
