@@ -113,6 +113,7 @@ function leadCard(l, ctx, t) {
         <div class="row wrap" style="gap:6px">
           <span class="pill ${grade.tone}" title="${grade.reasons.join(" · ")}">Grade ${grade.grade} (${grade.points})</span>
           <div class="lead-name">${l.name || "No name"}</div>
+          ${l.source === "whatsapp" ? html`<span class="pill good">WhatsApp${l.ref ? ` · ${l.ref}` : ""}</span>` : ""}
           ${l.city ? html`<span class="pill line">📍 ${l.city}</span>` : ""}
         </div>
         <div class="lead-meta" style="margin-top:3px">
@@ -155,13 +156,20 @@ export function render(ctx) {
   const s = text.trim().toLowerCase();
   const shown = dated.filter(
     (l) =>
-      (groupFilter === "all" || (groupFilter === "gradeA" ? scoreLeadGrade(l, ctx.catalog).grade === "A" : STAGE[l.stage]?.group === groupFilter)) &&
+      (groupFilter === "all" ||
+        (groupFilter === "gradeA"
+          ? scoreLeadGrade(l, ctx.catalog).grade === "A"
+          : groupFilter === "whatsapp"
+            ? l.source === "whatsapp"
+            : STAGE[l.stage]?.group === groupFilter)) &&
       (!projectFilter || l.project === projectFilter) &&
       (!cityFilter || l.city === cityFilter) &&
       (!s || [l.name, l.phone, l.email, l.city, l.campaignName, l.adName, l.notes, l.ref].some((x) => String(x || "").toLowerCase().includes(s))),
   );
   const waiting = dated.filter((l) => isWaiting(l.stage)).length;
   const valid = dated.filter((l) => isValid(l.stage)).length;
+  const waLeads = dated.filter((l) => l.source === "whatsapp");
+  const waValid = waLeads.filter((l) => isValid(l.stage)).length;
   const gradeACount = dated.filter((l) => scoreLeadGrade(l, ctx.catalog).grade === "A").length;
   const contacted = dated.filter((l) => l.stage !== "new").length;
   const unsentValid = dated.filter((l) => ctx.settings?.stagesToMeta && l.metaId && isValid(l.stage) && !l.sentToMeta?.[l.stage]);
@@ -184,7 +192,8 @@ export function render(ctx) {
     ${ctx.settings?.stagesToMeta ? html`<label class="row small"><input type="checkbox" data-auto ${auto ? raw("checked") : ""}> Send valid stages to Meta automatically</label>` : ""}
   </div>
   <div class="kpis" style="margin-bottom:14px">
-    ${kpi("Leads", n(dated.length))}
+    ${kpi("Leads", n(dated.length), `${n(dated.length - waLeads.length)} form · ${n(waLeads.length)} WhatsApp`)}
+    ${kpi("WhatsApp Campaign Leads", n(waLeads.length), `${n(waValid)} valid buyers via WA`, true)}
     ${kpi("Grade A Hot Buyers", n(gradeACount), "Budget & timeline fit", true)}
     ${kpi("Waiting for a call", n(waiting), waiting ? "call them first" : "", false)}
     ${kpi("Valid leads", n(valid), "", true)}
@@ -197,7 +206,7 @@ export function render(ctx) {
   <div class="card">
     <div class="card-head"><h2>Lead list (${n(shown.length)})</h2>
       <div class="row wrap">
-        <div class="seg" role="group" aria-label="Stage">${[["all", "All"], ["gradeA", "Grade A"], ["waiting", "Waiting"], ["valid", "Valid"], ["bad", "Not valid"]].map(([v, l]) => html`<button type="button" data-group="${v}" aria-pressed="${groupFilter === v}">${l}</button>`)}</div>
+        <div class="seg" role="group" aria-label="Stage">${[["all", "All"], ["gradeA", "Grade A"], ["whatsapp", "WhatsApp"], ["waiting", "Waiting"], ["valid", "Valid"], ["bad", "Not valid"]].map(([v, l]) => html`<button type="button" data-group="${v}" aria-pressed="${groupFilter === v}">${l}</button>`)}</div>
         <select class="input" style="width:auto" data-project-filter aria-label="Project"><option value="">All projects</option>${(ctx.catalog?.projects || []).map((p) => html`<option value="${p.id}" ${projectFilter === p.id ? raw("selected") : ""}>${p.name}</option>`)}</select>
         <select class="input" style="width:auto" data-city-filter aria-label="City Corridor"><option value="">All cities</option>${EGYPT_CORRIDORS.map((c) => html`<option value="${c.id}" ${cityFilter === c.id ? raw("selected") : ""}>${c.id}</option>`)}</select>
         <input class="input" style="width:200px" type="search" placeholder="Search name, phone, city, campaign" value="${text}" data-text aria-label="Search leads">

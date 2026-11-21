@@ -40,9 +40,18 @@ function rows(ctx) {
   return { q, list, since, until };
 }
 
+const isWaCampaign = (c) => c.objective === "OUTCOME_ENGAGEMENT" || (c.m?.convos || 0) > 0 || /whatsapp/i.test(c.name);
+
 function sorted(list) {
   const s = search.trim().toLowerCase();
-  let out = list.filter(({ c }) => (!s || c.name.toLowerCase().includes(s)) && (filter === "all" || (filter === "on" ? c.status === "ACTIVE" : c.status !== "ACTIVE")));
+  let out = list.filter(({ c }) => {
+    if (s && !c.name.toLowerCase().includes(s)) return false;
+    if (filter === "on") return c.status === "ACTIVE";
+    if (filter === "off") return c.status !== "ACTIVE";
+    if (filter === "wa") return isWaCampaign(c);
+    if (filter === "forms") return !isWaCampaign(c);
+    return true;
+  });
   const by = {
     spend: (a, b) => b.s.spend - a.s.spend,
     valid: (a, b) => b.s.valid - a.s.valid || b.s.spend - a.s.spend,
@@ -55,17 +64,19 @@ function sorted(list) {
 
 function listItem({ c, s, v, p }, selected, readOnly, maxSpend) {
   const barW = maxSpend > 0 ? Math.min(100, Math.round((s.spend / maxSpend) * 100)) : 0;
+  const isWa = isWaCampaign(c);
   return html`<div class="citem" role="option" aria-selected="${selected}" data-pick="${c.id}" tabindex="0">
     ${switchBtn("campaign", c, readOnly)}
     <div>
       <div class="t">${c.name}</div>
       <div class="row wrap" style="gap:4px;margin-top:4px">
         ${p ? html`<span class="pill accent">${p.name}</span>` : ""}
+        ${isWa ? html`<span class="pill good">WhatsApp</span>` : ""}
         <span class="pill ${v.tone}">${v.label}</span>
       </div>
       <div class="s">
         <span><b>${money(s.spend, { short: true })}</b> spent</span>
-        <span><b>${n(s.metaLeads)}</b> leads</span>
+        <span><b>${n(isWa ? (c.m?.convos || s.metaLeads) : s.metaLeads)}</b> ${isWa ? "chats" : "leads"}</span>
         <span><b>${n(s.valid)}</b> valid</span>
         ${s.cpvl ? html`<span><b>${money(s.cpvl, { short: true })}</b>/valid</span>` : ""}
       </div>
@@ -155,8 +166,10 @@ function detail(ctx, item, q) {
     </div>
     <div class="kpis">
       ${kpi("Spend", money(s.spend))}
-      ${kpi("Leads (Meta)", n(s.metaLeads), m.convos ? `${n(m.leads)} form · ${n(m.convos)} chats` : "")}
-      ${kpi("Cost per lead", money(s.cpl), t.cpl ? `target ${money(t.cpl)}` : "")}
+      ${isWaCampaign(c)
+        ? kpi("WhatsApp Chats Started", n(m.convos || s.metaLeads), m.linkClicks ? `${pct(((m.convos || s.metaLeads) / m.linkClicks) * 100, 1)} chat start rate` : "Click-to-WhatsApp", true)
+        : kpi("Leads (Meta)", n(s.metaLeads), m.convos ? `${n(m.leads)} form · ${n(m.convos)} chats` : "Instant forms")}
+      ${kpi(isWaCampaign(c) ? "Cost per WhatsApp Chat" : "Cost per lead", money(m.costPerConvo || s.cpl), t.cpl ? `target ${money(t.cpl)}` : "")}
       ${kpi("Valid leads", n(s.valid), s.logged ? `${n(s.logged)} in your lead log` : "Mark leads in Leads", true)}
       ${kpi("Valid rate", pct(s.validRate === null ? null : s.validRate * 100, 0), "of contacted leads", true)}
       ${kpi("Cost per valid lead", money(s.cpvl), t.cpvl ? `target ${money(t.cpvl)}` : "", true)}
@@ -234,7 +247,7 @@ export function render(ctx) {
       <div class="clist-head">
         <input class="input" type="search" placeholder="Find a campaign or project" value="${search}" data-search aria-label="Find a campaign">
         <div class="row between wrap">
-          <div class="seg" role="group" aria-label="Show">${[["all", "All"], ["on", "On"], ["off", "Off"]].map(([v, l]) => html`<button type="button" data-filter="${v}" aria-pressed="${filter === v}">${l}</button>`)}</div>
+          <div class="seg" role="group" aria-label="Show">${[["all", "All"], ["on", "On"], ["off", "Off"], ["wa", "WhatsApp"], ["forms", "Forms"]].map(([v, l]) => html`<button type="button" data-filter="${v}" aria-pressed="${filter === v}">${l}</button>`)}</div>
           <select class="input" style="width:auto;min-height:30px;padding:3px 8px" data-sort aria-label="Sort">${[["spend", "Most spend"], ["valid", "Most valid leads"], ["cpvl", "Lowest cost/valid"], ["name", "Name"]].map(([v, l]) => html`<option value="${v}" ${sort === v ? raw("selected") : ""}>${l}</option>`)}</select>
         </div>
         <div class="tiny faint">${ctx.tree.account.name} · ${since || "?"} to ${until || "?"} · updated ${dateTime(ctx.tree.fetchedAt)}${ctx.tree.cached ? " (cached)" : ""}</div>

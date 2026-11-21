@@ -106,7 +106,22 @@ const PLAN = [
   },
   {
     name: "GD | Krypton | WhatsApp | Nov", project: "krypton", whatsapp: true, objective: "OUTCOME_ENGAGEMENT",
-    sets: [{ name: "Messages · East Cairo & Delta", budget: 300, cpm: 70, ctr: 1.3, cvr: 11, valid: 20, meet: 38, res: 12, f: 1.3, learning: "SUCCESS", optimization: "CONVERSATIONS", t: tg({ cities: ["New Cairo", "Nasr City", "Madinaty", "Mansoura", "Tanta"], age: [27, 55] }), ads: [["wa-film-15s", 0.6, 1, 1], ["wa-static-from-price", 0.4, 0.85, 1.1]] }],
+    sets: [
+      { name: "WA · East Cairo & Delta", budget: 350, cpm: 70, ctr: 1.35, cvr: 12, valid: 26, meet: 42, res: 15, f: 1.28, learning: "SUCCESS", optimization: "CONVERSATIONS", t: tg({ cities: ["New Cairo", "Nasr City", "Madinaty", "Mansoura", "Tanta"], age: [27, 55] }), ads: [["wa-film-15s-krypton", 0.6, 1.05, 1], ["wa-static-5pct-down", 0.4, 0.9, 1.1]] },
+      { name: "WA · Gulf Expats VIP Chat", budget: 250, cpm: 145, ctr: 0.95, cvr: 10, valid: 34, meet: 44, res: 18, f: 1.18, learning: "SUCCESS", optimization: "CONVERSATIONS", t: tg({ cities: ["Riyadh", "Jeddah", "Dubai", "Kuwait City"], age: [30, 58] }), ads: [["wa-gulf-serviced-15s", 1, 1, 1]] },
+    ],
+  },
+  {
+    name: "GD | IVY | WhatsApp | Direct Advisory | Nov", project: "ivy", whatsapp: true, objective: "OUTCOME_ENGAGEMENT",
+    sets: [
+      { name: "WA · Sheikh Zayed & October Families", budget: 300, cpm: 74, ctr: 1.22, cvr: 11.5, valid: 29, meet: 45, res: 16, f: 1.22, learning: "SUCCESS", optimization: "CONVERSATIONS", t: tg({ cities: ["Sheikh Zayed", "6th of October", "Giza"], age: [30, 55] }), ads: [["wa-ivy-lake-15s", 0.65, 1.05, 1], ["wa-kings-school-chat", 0.35, 0.95, 1.05]] },
+    ],
+  },
+  {
+    name: "GD | Seashell Ras El Hekma | WhatsApp | Lagoon | Nov", project: "seashell-rah", whatsapp: true, objective: "OUTCOME_ENGAGEMENT",
+    sets: [
+      { name: "WA · Cairo & Alex Lagoon Buyers", budget: 250, cpm: 78, ctr: 1.1, cvr: 10.5, valid: 22, meet: 38, res: 14, f: 1.25, learning: "SUCCESS", optimization: "CONVERSATIONS", t: tg({ cities: ["New Cairo", "Sheikh Zayed", "Alexandria"], age: [30, 60] }), ads: [["wa-lagoon-chalet-15s", 1, 1, 1]] },
+    ],
   },
   {
     name: "GD | IVY | Leads | Families | Nov", project: "ivy", form: "IVY · higher intent",
@@ -232,6 +247,7 @@ function makeLead({ r, no, created, now, c, campaign, set, ad, from, city }) {
   const contactAt = stage === "new" ? null : new Date(Math.min(now.getTime(), created.getTime() + (4 + r() * r() * 160) * 60000)).toISOString();
   const valid = ["interested", "meeting", "visited", "reserved", "sold", "lost"].includes(stage);
   const gov = CITY_TO_GOV[city] || "Cairo";
+  const refPrefix = { krypton: "KR", ivy: "IVY", "seashell-rah": "SSR", "cheval-dunes": "CHD", gcribs: "GC" }[c.project] || "GD";
   const lead = {
     id: `demo_${no}`,
     demo: true,
@@ -245,7 +261,7 @@ function makeLead({ r, no, created, now, c, campaign, set, ad, from, city }) {
     source: c.whatsapp ? "whatsapp" : "meta-form",
     project: c.project,
     formName: c.whatsapp ? null : c.form,
-    ref: c.whatsapp ? `KR-1101-${String.fromCharCode(65 + (no % 26))}${no % 10}` : null,
+    ref: c.whatsapp ? `${refPrefix}-110${(no % 3) + 1}-${String.fromCharCode(65 + (no % 26))}${no % 10}` : null,
     campaignId: campaign.id,
     campaignName: campaign.name,
     adsetId: set.id,

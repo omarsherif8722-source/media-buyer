@@ -69,6 +69,24 @@ function renderTotalSpentModule(ctx, tt, q, daily, geo, t) {
         };
       })
       .sort((a, b) => b.spend - a.spend);
+  } else if (spendTab === "channel") {
+    const ch = {
+      wa: { id: "wa", label: "Click-to-WhatsApp (CTWA) Campaigns", sub: "Direct WhatsApp chat threads + ref codes", spend: 0, leads: 0, valid: 0, meetings: 0, reserved: 0, color: "#18864b", link: "#/campaigns" },
+      forms: { id: "forms", label: "Meta Instant Lead Form Campaigns", sub: "Higher-intent native lead forms", spend: 0, leads: 0, valid: 0, meetings: 0, reserved: 0, color: "#ce3927", link: "#/campaigns" },
+    };
+    for (const c of tree.campaigns) {
+      const isWa = c.objective === "OUTCOME_ENGAGEMENT" || /whatsapp|wa\b|message/i.test(c.name) || (c.m?.convos || 0) > (c.m?.leads || 0);
+      const b = isWa ? ch.wa : ch.forms;
+      b.spend += c.m?.spend || 0;
+      b.leads += (c.m?.leads || 0) + (c.m?.convos || 0);
+      const cq = q.campaign[c.id];
+      if (cq) {
+        b.valid += cq.valid || 0;
+        b.meetings += cq.meetings || 0;
+        b.reserved += cq.reserved || 0;
+      }
+    }
+    slices = Object.values(ch).filter((x) => x.spend > 0);
   } else if (spendTab === "geo") {
     slices = (geo?.corridors || [])
       .filter((c) => c.spend > 0)
@@ -128,6 +146,7 @@ function renderTotalSpentModule(ctx, tt, q, daily, geo, t) {
       <div class="seg" role="group" aria-label="Total Spent Breakdown">
         <button type="button" data-spend-tab="project" aria-pressed="${spendTab === "project"}">By Project</button>
         <button type="button" data-spend-tab="campaign" aria-pressed="${spendTab === "campaign"}">By Campaign</button>
+        <button type="button" data-spend-tab="channel" aria-pressed="${spendTab === "channel"}">WhatsApp vs. Forms</button>
         <button type="button" data-spend-tab="geo" aria-pressed="${spendTab === "geo"}">By Geography</button>
         <button type="button" data-spend-tab="efficiency" aria-pressed="${spendTab === "efficiency"}">Working vs. Wasted</button>
       </div>
@@ -183,10 +202,10 @@ function renderTotalSpentModule(ctx, tt, q, daily, geo, t) {
       <table>
         <thead>
           <tr>
-            <th>${spendTab === "project" ? "Project" : spendTab === "campaign" ? "Campaign" : spendTab === "geo" ? "Corridor / Governorate" : "Spend Efficiency Tier"}</th>
+            <th>${spendTab === "project" ? "Project" : spendTab === "campaign" ? "Campaign" : spendTab === "channel" ? "Acquisition Channel" : spendTab === "geo" ? "Corridor / Governorate" : "Spend Efficiency Tier"}</th>
             <th class="n">Amount Spent</th>
             <th style="min-width:130px">Share of Spend</th>
-            <th class="n">Leads</th>
+            <th class="n">Leads / Chats</th>
             <th class="n">Valid Buyers</th>
             <th class="n">Cost / Valid</th>
             <th class="n">Meetings</th>
@@ -225,6 +244,229 @@ function renderTotalSpentModule(ctx, tt, q, daily, geo, t) {
         </tbody>
       </table>
     </div>
+  </div>`;
+}
+
+function renderWhatsAppModule(ctx, tt, q, leads, t) {
+  const tree = ctx.tree;
+  if (!tree) return "";
+
+  const isWaCamp = (c) => c.objective === "OUTCOME_ENGAGEMENT" || (c.m?.convos || 0) > 0 || /whatsapp/i.test(c.name);
+  const waCampaigns = (tree.campaigns || []).filter(isWaCamp);
+  const formCampaigns = (tree.campaigns || []).filter((c) => !isWaCamp(c));
+
+  let waSpend = 0;
+  let waClicks = 0;
+  let waConvos = 0;
+  let waValid = 0;
+  let waContacted = 0;
+  let waMeetings = 0;
+  let waReserved = 0;
+  let waActiveSets = 0;
+
+  let formSpend = 0;
+  let formValid = 0;
+  for (const c of formCampaigns) {
+    const qc = q.campaign[c.id] || q.byName[`c:${c.name}`] || {};
+    formSpend += c.m?.spend || 0;
+    formValid += qc.valid || 0;
+  }
+  const formCpvl = formValid > 0 ? formSpend / formValid : null;
+
+  const rows = [];
+  for (const c of waCampaigns) {
+    const m = c.m || {};
+    const qc = q.campaign[c.id] || q.byName[`c:${c.name}`] || {};
+    const p = projectFromName(c.name, ctx.catalog);
+    const refPrefix = { krypton: "KR-1101", ivy: "IVY-1102", "seashell-rah": "SSR-1103", "cheval-dunes": "CHD-1104", gcribs: "GC-1105" }[p?.id] || "GD-1101";
+    const convos = m.convos || m.leads || qc.leads || 0;
+    const clicks = m.linkClicks || Math.round(convos * 2.4);
+    const spend = m.spend || 0;
+    const valid = qc.valid || 0;
+    const contacted = qc.contacted || 0;
+    const meetings = qc.meetings || 0;
+    const reserved = qc.reserved || 0;
+
+    waSpend += spend;
+    waClicks += clicks;
+    waConvos += convos;
+    waValid += valid;
+    waContacted += contacted;
+    waMeetings += meetings;
+    waReserved += reserved;
+
+    const adsetItems = (c.adsets || []).map((a) => {
+      if (a.effectiveStatus === "ACTIVE") waActiveSets += 1;
+      const am = a.m || {};
+      const qa = q.adset[a.id] || {};
+      const aConvos = am.convos || am.leads || qa.leads || 0;
+      const aClicks = am.linkClicks || Math.round(aConvos * 2.4);
+      const aSpend = am.spend || 0;
+      const aValid = qa.valid || 0;
+      return {
+        id: a.id,
+        name: a.name,
+        status: a.effectiveStatus,
+        spend: aSpend,
+        clicks: aClicks,
+        convos: aConvos,
+        chatRate: aClicks > 0 ? (aConvos / aClicks) * 100 : null,
+        costPerChat: aConvos > 0 ? aSpend / aConvos : null,
+        valid: aValid,
+        validRate: (qa.contacted || 0) > 0 ? (aValid / qa.contacted) * 100 : null,
+        cpvl: aValid > 0 ? aSpend / aValid : null,
+        meetings: qa.meetings || 0,
+        reserved: qa.reserved || 0,
+      };
+    });
+
+    rows.push({
+      c,
+      p,
+      refPrefix,
+      spend,
+      clicks,
+      convos,
+      chatRate: clicks > 0 ? (convos / clicks) * 100 : null,
+      costPerChat: convos > 0 ? spend / convos : null,
+      valid,
+      validRate: contacted > 0 ? (valid / contacted) * 100 : null,
+      cpvl: valid > 0 ? spend / valid : null,
+      meetings,
+      reserved,
+      adsetItems,
+    });
+  }
+
+  const waShareSpend = tt.spend > 0 ? (waSpend / tt.spend) * 100 : 0;
+  const waCostPerChat = waConvos > 0 ? waSpend / waConvos : null;
+  const waChatStartRate = waClicks > 0 ? (waConvos / waClicks) * 100 : null;
+  const waValidRate = waContacted > 0 ? (waValid / waContacted) * 100 : null;
+  const waCpvl = waValid > 0 ? waSpend / waValid : null;
+
+  return html`
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-head">
+      <div>
+        <div class="row wrap" style="gap:8px">
+          <h2>WhatsApp Campaigns &amp; Chat Numbers (Click-to-WhatsApp)</h2>
+          <span class="pill good">${waCampaigns.length} Campaigns · ${waActiveSets} Active Ad Sets</span>
+          <span class="pill info">${waShareSpend.toFixed(1)}% of Total Spend</span>
+        </div>
+        <p>Direct Meta Click-to-WhatsApp (CTWA) performance: conversations started, cost per chat, ref-code buyer qualification, and site visits vs. Instant Forms.</p>
+      </div>
+      <div class="row wrap">
+        <a class="btn sm" href="#/links">+ WhatsApp Ref Link</a>
+        <a class="btn sm" href="#/campaigns">Open in Campaigns</a>
+      </div>
+    </div>
+
+    <div class="kpis" style="margin-bottom:14px">
+      <div class="kpi">
+        <span>WhatsApp Campaigns Spend</span>
+        <b>${money(waSpend)}</b>
+        <small>${waShareSpend.toFixed(1)}% of ${money(tt.spend, { short: true })} total budget</small>
+      </div>
+      <div class="kpi key">
+        <span>WhatsApp Chats Started</span>
+        <b>${n(waConvos)}</b>
+        <small>${waChatStartRate !== null ? `${pct(waChatStartRate, 1)} chat start rate (${n(waClicks)} clicks)` : "Direct WA threads"}</small>
+      </div>
+      <div class="kpi">
+        <span>Cost per WhatsApp Chat</span>
+        <b>${money(waCostPerChat)}</b>
+        <small>${t.cpl ? `Target CPL ${money(t.cpl)}` : "Per started conversation"}</small>
+      </div>
+      <div class="kpi key">
+        <span>Valid WhatsApp Buyers</span>
+        <b>${n(waValid)}</b>
+        <small>${waValidRate !== null ? `${pct(waValidRate, 0)} valid rate of contacted chats` : "Qualified via WhatsApp"}</small>
+      </div>
+      <div class="kpi key">
+        <span>WhatsApp Cost / Valid Buyer</span>
+        <b>${money(waCpvl)}</b>
+        <small>${formCpvl && waCpvl ? (waCpvl <= formCpvl ? `${Math.round(((formCpvl - waCpvl) / formCpvl) * 100)}% cheaper than Forms (${money(formCpvl, { short: true })})` : `Forms avg ${money(formCpvl, { short: true })}`) : "Direct chat CPVL"}</small>
+      </div>
+      <div class="kpi">
+        <span>WhatsApp Visits &amp; Reserved</span>
+        <b>${n(waMeetings)} visits · ${n(waReserved)} EOI</b>
+        <small>${waReserved > 0 ? `${money(waSpend / waReserved)} per WhatsApp reservation` : "Site visits & EOIs"}</small>
+      </div>
+    </div>
+
+    ${rows.length ? html`
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>WhatsApp Campaign / Ad Set</th>
+            <th>Project &amp; Ref Prefix</th>
+            <th class="n">Spend</th>
+            <th class="n">Link Clicks</th>
+            <th class="n">Chats Started</th>
+            <th class="n">Chat Start %</th>
+            <th class="n">Cost / Chat</th>
+            <th class="n">Valid Buyers</th>
+            <th class="n">Valid Rate</th>
+            <th class="n">Cost / Valid</th>
+            <th class="n">Visits</th>
+            <th class="n">Reserved</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((r) => html`
+            <tr>
+              <td>
+                <div class="name"><a href="#/campaigns/${r.c.id}">${r.c.name}</a></div>
+                <div class="tiny muted">${r.c.effectiveStatus === "ACTIVE" ? "Active CTWA Campaign" : "Paused"} · ${r.adsetItems.length} ad sets</div>
+              </td>
+              <td>
+                <div class="row wrap" style="gap:4px">
+                  ${r.p ? html`<span class="pill accent">${r.p.name}</span>` : ""}
+                  <span class="pill line mono" title="Auto-injected in WhatsApp greeting">${r.refPrefix}</span>
+                </div>
+              </td>
+              <td class="n"><b>${money(r.spend)}</b></td>
+              <td class="n">${n(r.clicks)}</td>
+              <td class="n"><b>${n(r.convos)}</b></td>
+              <td class="n">${pct(r.chatRate, 1)}</td>
+              <td class="n">${money(r.costPerChat)}</td>
+              <td class="n"><b>${n(r.valid)}</b></td>
+              <td class="n">${pct(r.validRate, 0)}</td>
+              <td class="n"><b class="${r.cpvl && t.cpvl && r.cpvl <= t.cpvl ? "stage-valid" : ""}">${money(r.cpvl)}</b></td>
+              <td class="n">${n(r.meetings)}</td>
+              <td class="n"><b>${n(r.reserved)}</b></td>
+              <td class="n"><a class="btn sm ghost" href="#/campaigns/${r.c.id}">Manage</a></td>
+            </tr>
+            ${r.adsetItems.map((a) => html`
+            <tr class="sub">
+              <td style="padding-left:24px">
+                <div class="row" style="gap:6px">
+                  <span class="tiny muted">↳</span>
+                  <div>
+                    <div class="name">${a.name}</div>
+                    <div class="tiny muted">WhatsApp Ad Set · ${a.status === "ACTIVE" ? "Delivering" : "Paused"}</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="tiny muted">CTWA Direct Thread</span></td>
+              <td class="n">${money(a.spend)}</td>
+              <td class="n">${n(a.clicks)}</td>
+              <td class="n"><b>${n(a.convos)}</b></td>
+              <td class="n">${pct(a.chatRate, 1)}</td>
+              <td class="n">${money(a.costPerChat)}</td>
+              <td class="n"><b>${n(a.valid)}</b></td>
+              <td class="n">${pct(a.validRate, 0)}</td>
+              <td class="n"><b>${money(a.cpvl)}</b></td>
+              <td class="n">${n(a.meetings)}</td>
+              <td class="n">${n(a.reserved)}</td>
+              <td class="n"><a class="btn sm ghost" href="#/campaigns/${r.c.id}">Inspect</a></td>
+            </tr>`)}
+          `)}
+        </tbody>
+      </table>
+    </div>` : html`<div class="empty"><p>No Click-to-WhatsApp campaigns detected in this period.</p></div>`}
   </div>`;
 }
 
@@ -497,6 +739,8 @@ export function render(ctx) {
   </div>
 
   ${tree ? renderTotalSpentModule(ctx, tt, q, daily, geo, t) : ""}
+
+  ${tree ? renderWhatsAppModule(ctx, tt, q, leads, t) : ""}
 
   ${tree ? html`
   <div class="grid g2" style="margin-bottom:14px">
