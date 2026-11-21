@@ -409,6 +409,16 @@ async function handleApi(req, res, urlPath) {
         treeCache.set(key, { at: Date.now(), data });
         return sendJson(res, 200, data);
       }
+      case "GET /api/rules":
+        return sendJson(res, 200, await meta.rules());
+      case "GET /api/rules/history":
+        return sendJson(res, 200, await meta.rulesHistory());
+      case "POST /api/rules":
+        return sendJson(res, 200, await meta.createRule(String(body.preset || ""), body.params || {}));
+      case "POST /api/rules/status":
+        return sendJson(res, 200, await meta.setRuleStatus(String(body.id || ""), body.status));
+      case "POST /api/rules/delete":
+        return sendJson(res, 200, await meta.deleteRule(String(body.id || "")));
       case "GET /api/targeting":
         return sendJson(res, 200, await meta.targeting(q.get("id")));
       case "GET /api/search":

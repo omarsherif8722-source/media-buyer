@@ -52,8 +52,13 @@ const graph = createServer(async (req, res) => {
   };
   if (params.get("access_token") !== TOKEN && params.get("access_token") !== "page-token") return send(400, { error: { message: "Invalid OAuth access token.", code: 190 } });
   const path = url.pathname.replace(/^\/v23\.0/, "");
+  if (req.method === "DELETE") {
+    posts.push({ path, method: "DELETE", params: Object.fromEntries(params) });
+    return send(200, { success: true });
+  }
   if (req.method === "POST") {
     posts.push({ path, params: Object.fromEntries(params) });
+    if (path === "/act_123/adrules_library") return send(200, { id: "77700001" });
     if (path === "/888/events") return send(200, { events_received: 1 });
     return send(200, { success: true });
   }
@@ -76,6 +81,8 @@ const graph = createServer(async (req, res) => {
     if (level === "adset") return send(200, { data: [ins("s1", "adset_id")] });
     return send(200, { data: [ins("a1", "ad_id")] });
   }
+  if (path === "/act_123/adrules_library") return send(200, { data: [{ id: "77700001", name: "GD · No-result stop-loss · Krypton", status: "ENABLED", evaluation_spec: { evaluation_type: "SCHEDULE", filters: [{ field: "entity_type", operator: "EQUAL", value: "AD" }, { field: "spent", operator: "GREATER_THAN", value: 60000 }] }, execution_spec: { execution_type: "PAUSE" }, schedule_spec: { schedule_type: "SEMI_HOURLY" } }] });
+  if (path === "/act_123/adrules_history") return send(200, { data: [{ rule_id: "77700001", timestamp: "2026-11-20T10:00:00+0000", results: [{ object_id: NUM.a1, actions: [{ action: "PAUSE" }] }] }] });
   if (path === "/act_123/customaudiences") return send(200, { data: [{ id: "400001", name: "Krypton page visitors 30d", subtype: "WEBSITE" }] });
   if (path === "/search") return send(200, { data: params.get("type") === "adinterest" ? [{ id: "6004", name: "Real estate investing", audience_size_upper_bound: 5000000 }] : [{ key: "EG", name: "Egypt", type: "country", country_code: "EG" }] });
   if (path === "/777") return send(200, { access_token: "page-token", id: "777" });
@@ -271,6 +278,36 @@ await test("targeting change keeps everything else", async () => {
 });
 await test("refuse removing every location", async () => assert.equal((await api("/api/targeting", { method: "POST", body: { id: NUM.s1, patch: { geo_locations: {} } } })).status, 400));
 await test("refuse ages outside 18–65", async () => assert.equal((await api("/api/targeting", { method: "POST", body: { id: NUM.s1, patch: { age_min: 13 } } })).status, 400));
+await test("automatic rules: create from a preset, switch off, delete, history", async () => {
+  const list = await api("/api/rules");
+  assert.equal(list.status, 200, list.text);
+  assert.equal(list.data.rules.length, 1);
+  assert.equal(list.data.offset, 100);
+  const c = await api("/api/rules", { method: "POST", body: { preset: "stoploss", params: { type: "leads", cpl: 300, campaignIds: [NUM.c1], scopeLabel: "Krypton" } } });
+  assert.equal(c.status, 200, c.text);
+  const p = posts.at(-1);
+  assert.equal(p.path, "/act_123/adrules_library");
+  assert.equal(p.params.status, "ENABLED");
+  const ev = JSON.parse(p.params.evaluation_spec);
+  assert.deepEqual(ev.filters.find((f) => f.field === "spent"), { field: "spent", operator: "GREATER_THAN", value: 60000 }, "2 x EGP 300 in piasters");
+  assert.equal(ev.filters.find((f) => f.field === "leadgen").operator, "LESS_THAN");
+  assert.deepEqual(ev.filters.find((f) => f.field === "campaign.id").value, [NUM.c1]);
+  assert.equal(JSON.parse(p.params.execution_spec).execution_type, "PAUSE");
+  assert.equal(JSON.parse(p.params.schedule_spec).schedule_type, "SEMI_HOURLY");
+  const bad = await api("/api/rules", { method: "POST", body: { preset: "stoploss", params: { type: "leads", campaignIds: [NUM.c1] } } });
+  assert.equal(bad.status, 400, "needs a target cost per lead");
+  const off = await api("/api/rules/status", { method: "POST", body: { id: "77700001", status: "DISABLED" } });
+  assert.equal(off.status, 200, off.text);
+  assert.equal(posts.at(-1).path, "/77700001");
+  assert.equal(posts.at(-1).params.status, "DISABLED");
+  assert.equal((await api("/api/rules/status", { method: "POST", body: { id: "99999999", status: "DISABLED" } })).status, 403, "rule from another account refused");
+  const del = await api("/api/rules/delete", { method: "POST", body: { id: "77700001" } });
+  assert.equal(del.status, 200, del.text);
+  assert.equal(posts.at(-1).method, "DELETE");
+  const h = await api("/api/rules/history");
+  assert.equal(h.data[0].rule_id, "77700001");
+  assert.equal((await api("/api/rules", { method: "POST", body: { preset: "stoploss", params: { type: "leads", cpl: 300, campaignIds: [NUM.c1] } }, port: base + 1 })).status, 403, "read-only blocks rules");
+});
 await test("lead stage to Meta keeps the 17-digit lead id exact", async () => {
   const r = await api("/api/lead-stage", { method: "POST", body: { leadId: "12345678901234567", event: "Valid lead" } });
   assert.equal(r.status, 200, r.text);
@@ -419,6 +456,25 @@ await test("ad fatigue: falling CTR with high frequency is tired, steady is fres
   assert.equal(little[0].state, "little");
 });
 
+const rl = await import(join(root, "public", "js", "rules.js"));
+await test("rule presets build Meta's format, and read back in plain words", async () => {
+  const sc = rl.buildRule("scale", { type: "leads", cpl: 250, maxBudget: 1500, campaignIds: ["120210000000001"] }, 100);
+  const opt = sc.execution_spec.execution_options;
+  assert.equal(sc.execution_spec.execution_type, "CHANGE_BUDGET");
+  assert.deepEqual(opt.find((o) => o.field === "change_spec").value, { amount: 15, unit: "PERCENTAGE", limit: 150000 });
+  assert.equal(opt.find((o) => o.field === "action_frequency").value, 4320);
+  assert.equal(sc.evaluation_spec.filters.find((f) => f.field === "cost_per_lead_fb").value, 17500);
+  const wa = rl.buildRule("stoploss", { type: "messages", cpl: 200, campaignIds: ["120210000000002"] }, 100);
+  assert.ok(wa.evaluation_spec.filters.some((f) => f.field === "results"), "WhatsApp copy counts results, not form leads");
+  assert.ok(!wa.evaluation_spec.filters.some((f) => f.field === "leadgen"));
+  assert.throws(() => rl.buildRule("highcpl", { type: "messages", cpl: 200, campaignIds: ["120210000000002"] }), /lead-form/);
+  assert.throws(() => rl.buildRule("stoploss", { type: "leads", cpl: 200, campaignIds: [] }), /campaign/);
+  const cap = rl.buildRule("spendcap", { type: "leads", dailyCap: 2000, campaignIds: ["120210000000001"] }, 100);
+  assert.equal(cap.evaluation_spec.filters.find((f) => f.field === "time_preset").value, "TODAY");
+  const d = rl.describeRule(sc, 100, "EGP");
+  assert.match(d.text, /once a day: change ad set budget \+15% \(cap EGP 1,500\) for ad sets \(last 7 days\) where form leads > 9 and cost per lead < EGP 175/);
+});
+
 console.log("Demo mode");
 const { createDemo } = await import(join(root, "public", "js", "demo.js"));
 const demo = createDemo(catalog);
@@ -501,6 +557,19 @@ await test("demo daily rows add up and some demo ads wear out", async () => {
   const f = tr.fatigue(d.rows, (id) => freq[id], tr.FREQ_WATCH.last_14d);
   assert.ok(f.some((x) => x.state === "tired"), "at least one tired ad in demo");
   assert.ok(f.some((x) => x.state === "fresh"), "and some fresh ones");
+});
+await test("demo rules act on the demo ads", async () => {
+  const t = await demo.get("/api/tree", { range: "last_7d" });
+  const lead = t.campaigns.filter((c) => c.objective === "OUTCOME_LEADS").map((c) => c.id);
+  const r = await demo.post("/api/rules", { preset: "tired", params: { type: "leads", maxFrequency: 2, minCtr: 0.9, campaignIds: lead } });
+  assert.ok(r.demoRun >= 1, "tired-ad alert found something in demo");
+  const list = await demo.get("/api/rules");
+  assert.equal(list.rules.length, 1);
+  await demo.post("/api/rules/status", { id: list.rules[0].id, status: "DISABLED" });
+  assert.equal((await demo.get("/api/rules")).rules[0].status, "DISABLED");
+  assert.equal((await demo.get("/api/rules/history")).length, 1);
+  await demo.post("/api/rules/delete", { id: list.rules[0].id });
+  assert.equal((await demo.get("/api/rules")).rules.length, 0);
 });
 await test("demo 'get new leads' brings Meta-shaped leads", async () => {
   const r = await demo.get("/api/leads", { since: 0 });

@@ -1,3 +1,4 @@
+import { buildRule, preview, PRESETS } from "./rules.js";
 // Demo mode: a realistic G Developments ad account, daily time-series,
 // geographic attribution across Egypt governorates & GCC hubs, website funnel
 // telemetry, and 2,000+ leads so every visualization and action works live.
@@ -589,6 +590,10 @@ export function createDemo(catalog) {
         return wait(Object.values(AUD));
       case "/api/audit":
         return wait(state.audit);
+      case "/api/rules":
+        return wait({ currency: "EGP", offset: 100, rules: (state.rules ||= []) });
+      case "/api/rules/history":
+        return wait((state.ruleHistory ||= []));
       case "/api/web-events":
         return wait({ events: [] });
       case "/api/leads": {
@@ -642,6 +647,50 @@ export function createDemo(catalog) {
       return wait(log({ action: "targeting", id: f.o.id, name: f.o.name, from: before, to: describeTargeting(next) }));
     }
     if (path === "/api/lead-stage") return wait(log({ action: "lead-stage", id: String(body.leadId), name: body.event, to: 1 }));
+    if (path === "/api/rules") {
+      // Build the same rule the server would send to Meta, then run it once on the demo ads.
+      let spec;
+      try {
+        spec = buildRule(body.preset, body.params || {}, 100);
+      } catch (err) {
+        return fail(err.message);
+      }
+      const rule = { id: String(Date.now()), status: "ENABLED", created_time: new Date().toISOString(), preset: body.preset, ...spec };
+      (state.rules ||= []).unshift(rule);
+      const hits = preview(body.preset, body.params || {}, tree("last_7d"));
+      const P = PRESETS[body.preset];
+      const results = [];
+      for (const h of hits) {
+        const f = find(h.id);
+        if (!f) continue;
+        if (P.action === "PAUSE" && f.o.status === "ACTIVE") {
+          f.o.status = "PAUSED";
+          results.push({ object_id: h.id, object_name: h.name, action: "Switched off", why: h.why });
+        } else if (P.action === "CHANGE_BUDGET" && f.kind === "ad set") {
+          const cap = Number(body.params?.maxBudget) || Infinity;
+          const to = Math.min(cap, Math.round(f.o.budget * 1.15));
+          if (to > f.o.budget) results.push({ object_id: h.id, object_name: h.name, action: `Budget ${f.o.budget} → ${to}`, why: h.why });
+          f.o.budget = to;
+        } else results.push({ object_id: h.id, object_name: h.name, action: "Notification sent", why: h.why });
+      }
+      (state.ruleHistory ||= []).unshift({ timestamp: new Date().toISOString(), rule_id: rule.id, rule_name: rule.name, results });
+      log({ action: "rule-created", id: rule.id, name: rule.name, to: results.length });
+      return wait({ id: rule.id, name: rule.name, demoRun: results.length });
+    }
+    if (path === "/api/rules/status") {
+      const r = (state.rules ||= []).find((x) => x.id === String(body.id));
+      if (!r) return fail("That rule is not in this ad account.");
+      if (!["ENABLED", "DISABLED"].includes(body.status)) return fail("Status must be ENABLED or DISABLED.");
+      const from = r.status;
+      r.status = body.status;
+      return wait(log({ action: "rule-status", id: r.id, name: r.name, from, to: r.status }));
+    }
+    if (path === "/api/rules/delete") {
+      const i = (state.rules ||= []).findIndex((x) => x.id === String(body.id));
+      if (i < 0) return fail("That rule is not in this ad account.");
+      const [r] = state.rules.splice(i, 1);
+      return wait(log({ action: "rule-deleted", id: r.id, name: r.name }));
+    }
     if (path === "/api/web-event") return wait({ ok: true });
     return fail("Not available in demo mode.");
   }

@@ -488,3 +488,8 @@ tr.row-selected td { background: color-mix(in srgb, var(--accent-soft) 50%, var(
 .spark polyline { fill: none; stroke: var(--s4); stroke-width: 1.8; stroke-linejoin: round; }
 @media (max-width: 1100px) { .tcharts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .tcharts { grid-template-columns: 1fr; } }
+
+/* ---------- Automatic rules ---------- */
+.rulecard h3 { font-size: 15px; }
+.rulecard .card-head p { max-width: 60ch; }
+.grid.g2 > .rulecard + .rulecard { margin-top: 0; }
