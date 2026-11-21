@@ -1,10 +1,11 @@
 // The control room: every campaign in one list, switch between them in one
 // click, turn things on or off, change budgets, open the targeting editor,
+// execute 1-click verdict actions (Scale +20%, Pause waste, Widen geo),
 // and read results next to lead quality (valid leads, cost per valid lead).
 import { html, raw, money, n, pct, $, toast, confirmDialog, promptDialog, currency, dateTime } from "../ui.js";
 import { post, get } from "../api.js";
 import { targets } from "../store.js";
-import { allLeads, quality, treeDates, score, projectFromName } from "../model.js";
+import { allLeads, quality, treeDates, score, projectFromName, verdict } from "../model.js";
 import { kpi, statusPill, objective, switchBtn, connectCard, loadingCard, targetingLine } from "./common.js";
 import { openTargeting } from "./targeting.js";
 
@@ -26,7 +27,16 @@ const merge = (a, b) => {
 function rows(ctx) {
   const { since, until } = treeDates(ctx.tree);
   const q = quality(allLeads(), since, until);
-  const list = ctx.tree.campaigns.map((c) => ({ c, s: score(c.m, merge(q.campaign[c.id], q.byName[`c:${c.name}`])), p: projectFromName(c.name, ctx.catalog) }));
+  const t = targets();
+  const list = ctx.tree.campaigns.map((c) => {
+    const s = score(c.m, merge(q.campaign[c.id], q.byName[`c:${c.name}`]));
+    return {
+      c,
+      s,
+      v: verdict(c.m, s, t, null, c.effectiveStatus),
+      p: projectFromName(c.name, ctx.catalog),
+    };
+  });
   return { q, list, since, until };
 }
 
@@ -40,16 +50,26 @@ function sorted(list) {
     name: (a, b) => a.c.name.localeCompare(b.c.name),
   };
   out = out.sort(by[sort] || by.spend);
-  // Campaigns that are on come first.
   return out.sort((a, b) => (b.c.status === "ACTIVE") - (a.c.status === "ACTIVE"));
 }
 
-function listItem({ c, s, p }, selected, readOnly) {
+function listItem({ c, s, v, p }, selected, readOnly, maxSpend) {
+  const barW = maxSpend > 0 ? Math.min(100, Math.round((s.spend / maxSpend) * 100)) : 0;
   return html`<div class="citem" role="option" aria-selected="${selected}" data-pick="${c.id}" tabindex="0">
     ${switchBtn("campaign", c, readOnly)}
-    <div><div class="t">${c.name}</div>
-      <div class="s">${c.effectiveStatus !== "ACTIVE" && c.effectiveStatus !== "PAUSED" ? statusPill(c.effectiveStatus) : ""}${p ? html`<span class="pill accent">${p.name}</span>` : ""}
-        <span><b>${money(s.spend, { short: true })}</b> spent</span><span><b>${n(s.metaLeads)}</b> leads</span><span><b>${n(s.valid)}</b> valid</span>${s.cpvl ? html`<span><b>${money(s.cpvl, { short: true })}</b>/valid</span>` : ""}</div>
+    <div>
+      <div class="t">${c.name}</div>
+      <div class="row wrap" style="gap:4px;margin-top:4px">
+        ${p ? html`<span class="pill accent">${p.name}</span>` : ""}
+        <span class="pill ${v.tone}">${v.label}</span>
+      </div>
+      <div class="s">
+        <span><b>${money(s.spend, { short: true })}</b> spent</span>
+        <span><b>${n(s.metaLeads)}</b> leads</span>
+        <span><b>${n(s.valid)}</b> valid</span>
+        ${s.cpvl ? html`<span><b>${money(s.cpvl, { short: true })}</b>/valid</span>` : ""}
+      </div>
+      <div class="bar" style="height:4px;margin-top:5px"><i style="width:${barW}%"></i></div>
     </div>
   </div>`;
 }
@@ -70,26 +90,73 @@ function budgetButton(o, kind) {
   return html`<button type="button" class="budget-btn" data-budget="${o.id}" data-field="${field}" data-value="${v}" data-name="${o.name}">${money(v)}${field === "daily_budget" ? "/day" : " total"}</button>`;
 }
 
+function renderCampaignSparkline(daily) {
+  if (!daily || daily.length < 2) return "";
+  const W = 560, H = 96, padL = 36, padR = 24, padT = 10, padB = 20;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const maxSpend = Math.max(50, ...daily.map((d) => d.spend || 0));
+  const stepX = plotW / Math.max(1, daily.length);
+  const barW = Math.max(4, Math.min(20, stepX * 0.62));
+  return html`
+  <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+    <div class="row between small muted" style="margin-bottom:4px">
+      <span>Daily Campaign Spend &amp; Lead Pulse</span>
+      <span>Peak day: <b>${money(maxSpend)}</b></span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" class="chart-svg" style="max-height:96px">
+      ${daily.map((d, i) => {
+        const cx = padL + i * stepX + stepX / 2;
+        const bh = Math.max(2, ((d.spend || 0) / maxSpend) * plotH);
+        const by = padT + plotH - bh;
+        const showDate = daily.length <= 10 || i === 0 || i === daily.length - 1 || i === Math.floor(daily.length / 2);
+        return html`<g>
+          <rect x="${(cx - barW / 2).toFixed(1)}" y="${by.toFixed(1)}" width="${barW.toFixed(1)}" height="${bh.toFixed(1)}" rx="2" fill="color-mix(in srgb, var(--accent) 42%, var(--card))">
+            <title>${d.date}: ${money(d.spend)} · ${n(d.leads)} leads</title>
+          </rect>
+          ${showDate ? html`<text x="${cx.toFixed(1)}" y="${H - 4}" text-anchor="middle" class="chart-axis">${d.date.slice(5)}</text>` : ""}
+        </g>`;
+      })}
+    </svg>
+  </div>`;
+}
+
 function detail(ctx, item, q) {
-  const { c, s, p } = item;
+  const { c, s, v, p } = item;
   const t = targets();
   const ro = ctx.tree.readOnly;
   const m = c.m || {};
-  const setRows = c.adsets.map((a) => ({ a, s: score(a.m, q.adset[a.id]) }));
+  const setRows = c.adsets.map((a) => {
+    const sc = score(a.m, q.adset[a.id]);
+    return { a, s: sc, v: verdict(a.m, sc, t, a.learning, a.effectiveStatus) };
+  });
   return html`
   <div class="card">
     <div class="card-head">
       <div class="row" style="align-items:flex-start;gap:12px">${switchBtn("campaign", c, ro)}
         <div><h2>${c.name}</h2>
-          <div class="row wrap small muted" style="margin-top:4px">${statusPill(c.effectiveStatus)}<span>${objective(c.objective)}</span>${p ? html`<span class="pill accent">${p.name}</span>` : html`<span class="pill line" title="Put the project name in the campaign name, e.g. GD | Krypton | Leads | ...">No project in name</span>`}${c.specialCategories?.length ? html`<span class="pill line">Special category: ${c.specialCategories.join(", ").toLowerCase()}</span>` : ""}${c.bidStrategy ? html`<span>${c.bidStrategy.toLowerCase().replace(/_/g, " ")}</span>` : ""}</div>
+          <div class="row wrap small muted" style="margin-top:4px">
+            ${statusPill(c.effectiveStatus)}
+            <span class="pill ${v.tone}">${v.label}</span>
+            <span>${objective(c.objective)}</span>
+            ${p ? html`<span class="pill accent">${p.name}</span>` : html`<span class="pill line" title="Put the project name in the campaign name, e.g. GD | Krypton | Leads | ...">No project in name</span>`}
+            ${c.specialCategories?.length ? html`<span class="pill line">Special category: ${c.specialCategories.join(", ").toLowerCase()}</span>` : ""}
+            ${c.bidStrategy ? html`<span>${c.bidStrategy.toLowerCase().replace(/_/g, " ")}</span>` : ""}
+          </div>
         </div>
       </div>
-      <div class="row">${budgetButton(c, "campaign")}</div>
+      <div class="row wrap">
+        ${p ? html`<a class="btn sm ghost" href="${p.url}" target="_blank" rel="noopener">Landing Page ↗</a>` : ""}
+        ${budgetButton(c, "campaign")}
+      </div>
+    </div>
+    <div class="note ${v.tone === "line" ? "" : v.tone}" style="margin-bottom:12px">
+      <b>Media Buyer Verdict: ${v.label}.</b> ${v.why}
     </div>
     <div class="kpis">
       ${kpi("Spend", money(s.spend))}
       ${kpi("Leads (Meta)", n(s.metaLeads), m.convos ? `${n(m.leads)} form · ${n(m.convos)} chats` : "")}
-      ${kpi("Cost per lead", money(s.cpl))}
+      ${kpi("Cost per lead", money(s.cpl), t.cpl ? `target ${money(t.cpl)}` : "")}
       ${kpi("Valid leads", n(s.valid), s.logged ? `${n(s.logged)} in your lead log` : "Mark leads in Leads", true)}
       ${kpi("Valid rate", pct(s.validRate === null ? null : s.validRate * 100, 0), "of contacted leads", true)}
       ${kpi("Cost per valid lead", money(s.cpvl), t.cpvl ? `target ${money(t.cpvl)}` : "", true)}
@@ -100,33 +167,41 @@ function detail(ctx, item, q) {
       ${kpi("Link CTR", pct(m.ctr, 2))}
       ${kpi("CPM", money(m.cpm))}
     </div>
+    ${renderCampaignSparkline(c.daily)}
   </div>
   <div class="card">
-    <div class="card-head"><div><h2>Ad sets</h2><p>Who sees the ads and how much each audience costs per valid lead. Open Targeting to change locations, ages, interests or audiences.</p></div></div>
+    <div class="card-head"><div><h2>Ad sets &amp; 1-Click Actions (${setRows.length})</h2><p>Who sees the ads, automated verdict per audience, and how much each costs per valid buyer. Open Targeting to edit locations, ages, interests or custom audiences.</p></div></div>
     ${setRows.length ? adsetTable(setRows, q, t, ro) : html`<p class="muted">No ad sets in this campaign.</p>`}
   </div>`;
 }
 
 function adsetTable(setRows, q, t, ro) {
-  const head = html`<tr><th></th><th>Ad set / ad</th><th>Budget</th><th class="n">Spend</th><th class="n">Leads</th><th class="n">Cost/lead</th><th class="n">Valid</th><th class="n">Cost/valid</th><th class="n">Meet.</th><th class="n">Freq.</th><th class="n">CTR</th><th></th></tr>`;
-  const body = setRows.map(({ a, s }) => {
+  const head = html`<tr><th></th><th>Ad set / ad</th><th>Verdict</th><th>Budget</th><th class="n">Spend</th><th class="n">Leads</th><th class="n">CPL</th><th class="n">Valid</th><th class="n">Cost/valid</th><th class="n">Meet.</th><th class="n">Freq.</th><th class="n">CTR</th><th>Actions</th></tr>`;
+  const body = setRows.map(({ a, s, v }) => {
     const adRows = a.ads.map((ad) => ({ ad, s: score(ad.m, q.ad[ad.id]) }));
     const bestCpvl = Math.min(...adRows.filter((r) => r.s.valid >= 2 && r.s.cpvl).map((r) => r.s.cpvl));
     const tl = targetingLine(a.targeting);
     return html`<tr>
       <td>${switchBtn("adset", a, ro)}</td>
-      <td style="min-width:220px"><div class="name">${a.name}</div><div class="tiny muted">${a.effectiveStatus !== "ACTIVE" ? statusPill(a.effectiveStatus) : ""} ${a.learning === "LEARNING" ? html`<span class="pill info">Learning</span>` : a.learning === "FAIL" ? html`<span class="pill warn">Learning limited</span>` : ""} ${a.optimization ? a.optimization.toLowerCase().replace(/_/g, " ") : ""}</div>${tl ? html`<div class="tiny faint">${tl}</div>` : ""}<div class="row wrap" style="margin-top:3px">${flagsFor(a.m, t, false)}</div></td>
+      <td style="min-width:210px"><div class="name">${a.name}</div><div class="tiny muted">${a.effectiveStatus !== "ACTIVE" ? statusPill(a.effectiveStatus) : ""} ${a.learning === "LEARNING" ? html`<span class="pill info">Learning</span>` : a.learning === "FAIL" ? html`<span class="pill warn">Learning limited</span>` : ""} ${a.optimization ? a.optimization.toLowerCase().replace(/_/g, " ") : ""}</div>${tl ? html`<div class="tiny faint">${tl}</div>` : ""}<div class="row wrap" style="margin-top:3px">${flagsFor(a.m, t, false)}</div></td>
+      <td><span class="pill ${v.tone}" title="${v.why}">${v.label}</span></td>
       <td>${budgetButton(a, "adset")}</td>
       <td class="n">${money(s.spend)}</td><td class="n">${n(s.metaLeads)}</td><td class="n">${money(s.cpl)}</td>
-      <td class="n"><b>${n(s.valid)}</b></td><td class="n"><b>${money(s.cpvl)}</b></td><td class="n">${n(s.meetings)}</td>
+      <td class="n"><b>${n(s.valid)}</b></td><td class="n"><b class="${s.cpvl && t.cpvl && s.cpvl <= t.cpvl ? "stage-valid" : ""}">${money(s.cpvl)}</b></td><td class="n">${n(s.meetings)}</td>
       <td class="n">${a.m?.frequency ? a.m.frequency.toFixed(1) : "—"}</td><td class="n">${pct(a.m?.ctr, 2)}</td>
-      <td class="n"><div class="row" style="justify-content:flex-end"><button class="btn sm" type="button" data-targeting="${a.id}">Targeting</button><button class="btn sm ghost" type="button" data-expand="${a.id}" aria-expanded="${open.has(a.id)}">${open.has(a.id) ? "Hide" : `Ads (${a.ads.length})`}</button></div></td>
+      <td class="n">
+        <div class="row" style="justify-content:flex-end">
+          ${!ro && a.dailyBudget && v.code === "scale" ? html`<button class="btn sm primary" type="button" data-quick-scale="${a.id}" data-value="${a.dailyBudget}" data-name="${a.name}" title="${v.why}">+20%</button>` : ""}
+          <button class="btn sm" type="button" data-targeting="${a.id}">Targeting</button>
+          <button class="btn sm ghost" type="button" data-expand="${a.id}" aria-expanded="${open.has(a.id)}">${open.has(a.id) ? "Hide" : `Ads (${a.ads.length})`}</button>
+        </div>
+      </td>
     </tr>
     ${open.has(a.id)
       ? adRows.map(
           ({ ad, s: as }) => html`<tr class="sub">
           <td>${switchBtn("ad", ad, ro)}</td>
-          <td><div class="adrow">${ad.creative?.thumb ? html`<img class="thumb" src="${ad.creative.thumb}" alt="" loading="lazy" referrerpolicy="no-referrer">` : html`<span class="thumb"></span>`}<div><div class="name">${ad.name}</div><div class="row wrap">${ad.effectiveStatus !== "ACTIVE" ? statusPill(ad.effectiveStatus) : ""}${flagsFor(ad.m, t, as.cpvl && as.cpvl === bestCpvl && adRows.length > 1)}</div></div></div></td>
+          <td colspan="2"><div class="adrow">${ad.creative?.thumb ? html`<img class="thumb" src="${ad.creative.thumb}" alt="" loading="lazy" referrerpolicy="no-referrer">` : html`<span class="thumb"></span>`}<div><div class="name">${ad.name}</div><div class="row wrap">${ad.effectiveStatus !== "ACTIVE" ? statusPill(ad.effectiveStatus) : ""}${flagsFor(ad.m, t, as.cpvl && as.cpvl === bestCpvl && adRows.length > 1)}</div></div></div></td>
           <td></td>
           <td class="n">${money(as.spend)}</td><td class="n">${n(as.metaLeads)}</td><td class="n">${money(as.cpl)}</td>
           <td class="n"><b>${n(as.valid)}</b></td><td class="n"><b>${money(as.cpvl)}</b></td><td class="n">${n(as.meetings)}</td>
@@ -139,7 +214,7 @@ function adsetTable(setRows, q, t, ro) {
 }
 
 export function render(ctx) {
-  const top = html`<div class="top"><div><h1>Campaigns</h1><p class="sub">Pick a campaign, switch things on or off, change budgets and targeting. "Valid" counts the leads you marked as real interest in Leads.</p></div>
+  const top = html`<div class="top"><div><h1>Campaigns Control Room</h1><p class="sub">Pick a campaign, switch things on or off, execute 1-click budget scales, and edit geo/interest targeting. Every ad set is judged by cost per valid buyer.</p></div>
     <div class="top-actions">${ctx.settings?.connected ? html`${ctx.periodSwitch()}${ctx.refreshButton()}` : ""}</div></div>`;
   if (!ctx.settings) return html`${top}${loadingCard()}`;
   if (!ctx.settings.connected) return html`${top}${connectCard(ctx.settings)}`;
@@ -147,6 +222,7 @@ export function render(ctx) {
 
   const { q, list, since, until } = rows(ctx);
   const shown = sorted(list);
+  const maxSpend = Math.max(1, ...list.map((x) => x.s.spend));
   const selId = ctx.params[0] && list.some((x) => x.c.id === ctx.params[0]) ? ctx.params[0] : shown[0]?.c.id;
   const sel = list.find((x) => x.c.id === selId);
   const ro = ctx.tree.readOnly;
@@ -156,14 +232,14 @@ export function render(ctx) {
   <div class="control">
     <section class="card clist" aria-label="Campaign list">
       <div class="clist-head">
-        <input class="input" type="search" placeholder="Find a campaign" value="${search}" data-search aria-label="Find a campaign">
+        <input class="input" type="search" placeholder="Find a campaign or project" value="${search}" data-search aria-label="Find a campaign">
         <div class="row between wrap">
           <div class="seg" role="group" aria-label="Show">${[["all", "All"], ["on", "On"], ["off", "Off"]].map(([v, l]) => html`<button type="button" data-filter="${v}" aria-pressed="${filter === v}">${l}</button>`)}</div>
           <select class="input" style="width:auto;min-height:30px;padding:3px 8px" data-sort aria-label="Sort">${[["spend", "Most spend"], ["valid", "Most valid leads"], ["cpvl", "Lowest cost/valid"], ["name", "Name"]].map(([v, l]) => html`<option value="${v}" ${sort === v ? raw("selected") : ""}>${l}</option>`)}</select>
         </div>
         <div class="tiny faint">${ctx.tree.account.name} · ${since || "?"} to ${until || "?"} · updated ${dateTime(ctx.tree.fetchedAt)}${ctx.tree.cached ? " (cached)" : ""}</div>
       </div>
-      <div class="clist-body" role="listbox" aria-label="Campaigns">${shown.length ? shown.map((x) => listItem(x, x.c.id === selId, ro)) : html`<div class="empty"><h3>No campaigns</h3><p>${list.length ? "Nothing matches this filter." : "This ad account has no campaigns yet."}</p></div>`}</div>
+      <div class="clist-body" role="listbox" aria-label="Campaigns">${shown.length ? shown.map((x) => listItem(x, x.c.id === selId, ro, maxSpend)) : html`<div class="empty"><h3>No campaigns</h3><p>${list.length ? "Nothing matches this filter." : "This ad account has no campaigns yet."}</p></div>`}</div>
     </section>
     <section aria-label="Campaign detail">${sel ? detail(ctx, sel, q) : html`<div class="card empty"><h3>Pick a campaign</h3></div>`}
       <div class="card"><div class="card-head"><div><h2>Changes made from this dashboard</h2><p>Since the server last started. Render's log keeps the full history.</p></div><button class="btn sm" type="button" data-audit>Show</button></div>
@@ -251,6 +327,28 @@ async function changeBudget(btn, ctx) {
   }
 }
 
+async function quickScale(btn, ctx) {
+  const id = btn.dataset.quickScale;
+  const cur = Number(btn.dataset.value);
+  const name = btn.dataset.name;
+  const nv = Math.round(cur * 1.2);
+  const ok = await confirmDialog({
+    title: "Scale winning ad set by +20%?",
+    body: html`<b>${name}</b><div class="diff" style="margin-top:8px"><div>${money(cur)}/day → <b>${money(nv)}/day (+20%)</b></div></div>`,
+    ok: "Scale +20%",
+  });
+  if (!ok) return;
+  try {
+    const r = await post("/api/budget", { id, field: "daily_budget", amount: nv });
+    const f = findObj(ctx.tree, id);
+    if (f) f.obj.dailyBudget = r.to;
+    toast(`Scaled ${name} to ${money(r.to)}/day.`, "good");
+    ctx.render();
+  } catch (e) {
+    toast(e.message, "bad");
+  }
+}
+
 export function mount(root, ctx) {
   const s = $("[data-search]", root);
   if (s && document.activeElement === document.body && search) {
@@ -278,6 +376,8 @@ export function mount(root, ctx) {
       e.stopPropagation();
       return toggle(sw, ctx);
     }
+    const qs = e.target.closest("[data-quick-scale]");
+    if (qs) return quickScale(qs, ctx);
     const b = e.target.closest("[data-budget]");
     if (b) return changeBudget(b, ctx);
     const f = e.target.closest("[data-filter]");

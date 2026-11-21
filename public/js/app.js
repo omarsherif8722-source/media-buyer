@@ -6,6 +6,8 @@ import { load, save, loadGlobal, saveGlobal, isDemo, setDemo, clearDemo } from "
 import { allLeads, onLeads, reloadLeads, replaceAll } from "./model.js";
 import { createDemo, DEMO_TARGETS } from "./demo.js";
 import * as overview from "./views/overview.js";
+import * as geo from "./views/geo.js";
+import * as website from "./views/website.js";
 import * as campaigns from "./views/campaigns.js";
 import * as planner from "./views/planner.js";
 import * as leads from "./views/leads.js";
@@ -17,6 +19,8 @@ import * as guide from "./views/guide.js";
 
 const I = {
   home: '<path d="M3 11.5 12 4l9 7.5M5 10v10h14V10"/>',
+  map: '<path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20V6.5Z"/><path d="M9 4v13.5M15 6.5V20"/>',
+  web: '<circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
   ads: '<path d="M4 13V7l12-4v14L4 13Zm0 0 2 7h3l-1.5-6M19 8.5a3 3 0 0 1 0 5"/>',
   plan: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   leads: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.6c1.7.8 2.7 2.6 3 5.4"/>',
@@ -30,17 +34,19 @@ const I = {
 const icon = (k) => raw(`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[k]}</svg>`);
 
 const VIEWS = [
-  { id: "overview", label: "Overview", icon: "home", mod: overview },
+  { id: "overview", label: "Command Center", icon: "home", mod: overview },
+  { id: "geo", label: "Egypt & GCC Map", icon: "map", group: "Intelligence", mod: geo },
+  { id: "website", label: "Website Funnel", icon: "web", group: "Intelligence", mod: website },
   { id: "campaigns", label: "Campaigns", icon: "ads", group: "Ads", mod: campaigns },
   { id: "planner", label: "Budget planner", icon: "plan", group: "Ads", mod: planner },
-  { id: "leads", label: "Leads", icon: "leads", group: "Buyers", mod: leads },
+  { id: "leads", label: "Leads & CRM", icon: "leads", group: "Buyers", mod: leads },
   { id: "audiences", label: "Audiences", icon: "target", group: "Buyers", mod: audiences },
-  { id: "messages", label: "Messages", icon: "msg", group: "Content", mod: messages },
+  { id: "messages", label: "Messages & Copy", icon: "msg", group: "Content", mod: messages },
   { id: "links", label: "Tracked links", icon: "link", group: "Content", mod: links },
   { id: "inventory", label: "What to sell", icon: "box", group: "Product", mod: inventory },
   { id: "guide", label: "Playbook", icon: "book", group: "Guide", mod: guide },
 ];
-const PHONE_TABS = ["overview", "campaigns", "leads", "messages"];
+const PHONE_TABS = ["overview", "geo", "campaigns", "leads"];
 
 export const PERIODS = [
   ["today", "Today"],
@@ -114,7 +120,7 @@ function shell() {
   return html`
   <div class="shell">
     <nav class="side" aria-label="Sections">
-      <div class="brand"><div class="brand-mark" aria-hidden="true">G</div><div><b>G Developments</b><span>Media buying</span></div></div>
+      <div class="brand"><div class="brand-mark" aria-hidden="true">G</div><div><b>G Developments</b><span>Media Command Center</span></div></div>
       ${groups.map(
         (g) => html`<div class="nav-group">${g.name ? html`<span>${g.name}</span>` : ""}<div class="nav">${g.items.map(
           (v) => html`<a href="#/${v.id}" data-nav="${v.id}">${icon(v.icon)}<span>${v.label}</span>${v.id === "leads" ? html`<span class="count" data-waiting hidden></span>` : ""}</a>`,
@@ -127,11 +133,11 @@ function shell() {
     </nav>
     <div class="content">
       <header class="appbar">
-        <div class="appbar-brand"><div class="brand-mark" aria-hidden="true">G</div><b>Media buying</b></div>
+        <div class="appbar-brand"><div class="brand-mark" aria-hidden="true">G</div><b>Media Command</b></div>
         <div class="appbar-status small" data-appbar-status></div>
         <div class="demo-switch"><span id="demo-label">Demo</span><button type="button" class="switch" role="switch" aria-checked="false" aria-labelledby="demo-label" data-demo-toggle title="Show made-up campaigns and leads"></button></div>
       </header>
-      <div class="demo-banner" data-demo-banner hidden><div><b>Demo data.</b> Made-up campaigns and leads that show how the dashboard tracks results. Nothing here is real. Switches, budgets and targeting change only this demo, never Meta.</div><button class="btn sm" type="button" data-demo-reset>Reset demo</button></div>
+      <div class="demo-banner" data-demo-banner hidden><div><b>Demo account active.</b> Full interactive G Developments simulation (6 campaigns, 45 days of daily data, Egypt &amp; GCC geo attribution, website funnel, and 2,000+ graded leads). Switches, budgets and retargeting edits work live in the browser without touching Meta.</div><button class="btn sm" type="button" data-demo-reset>Reset demo</button></div>
       <main class="main" id="main" tabindex="-1"></main>
     </div>
     <nav class="tabbar" aria-label="Sections">
@@ -146,7 +152,7 @@ function render() {
   const main = $("#main");
   if (!main) return;
   const v = VIEWS.find((x) => x.id === ctx.view);
-  document.title = `${v.label} · G Developments media buying`;
+  document.title = `${v.label} · G Developments Media Command`;
   for (const a of document.querySelectorAll("[data-nav]")) {
     if (a.dataset.nav === ctx.view) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
@@ -164,7 +170,7 @@ function render() {
   if (banner) banner.hidden = !demo;
   document.documentElement.classList.toggle("is-demo", demo);
   const status = $("[data-appbar-status]");
-  if (status) status.innerHTML = demo ? html`<span class="pill warn">Demo account · made-up data</span>`.s : ctx.settings?.connected ? html`<span class="pill good">Meta connected</span> <span class="muted">${ctx.tree?.account?.name || ""}</span>`.s : ctx.settings ? html`<span class="pill line">Meta not connected</span>`.s : "";
+  if (status) status.innerHTML = demo ? html`<span class="pill warn">Demo account · Interactive simulation</span> <span class="muted small">13 G Developments Projects · 1,787 ATS Units</span>`.s : ctx.settings?.connected ? html`<span class="pill good">Meta connected</span> <span class="muted">${ctx.tree?.account?.name || ""}</span>`.s : ctx.settings ? html`<span class="pill line">Meta not connected (Switch Demo ON to explore)</span>`.s : "";
   const conn = $("[data-conn]");
   if (conn) {
     const s = ctx.settings;
@@ -256,7 +262,7 @@ async function switchDemo(on) {
     ctx.settings = { connected: false };
   }
   render();
-  toast(on ? "Demo on: made-up data, nothing reaches Meta." : "Demo off: your real data.", on ? "" : "good");
+  toast(on ? "Demo on: interactive simulation active." : "Demo off: your real data.", on ? "" : "good");
   if (ctx.settings.connected) ctx.loadTree();
 }
 
@@ -266,14 +272,21 @@ async function start() {
   document.getElementById("app").innerHTML = shell().s;
   bindShell();
   render();
-  const [catalog, settings] = await Promise.allSettled([fetch("/data/catalog.json", { credentials: "same-origin" }).then((r) => r.json()), get("/api/settings")]);
+  const [catalog, settings] = await Promise.allSettled([fetch("./data/catalog.json", { credentials: "same-origin" }).then((r) => r.json()), get("/api/settings")]);
   ctx.catalog = catalog.status === "fulfilled" ? catalog.value : { projects: [], regions: [], site: {} };
   demoBackend = createDemo(ctx.catalog);
   setDemoBackend(demoBackend);
+  const realSettings = settings.status === "fulfilled" ? settings.value : { connected: false };
+  // If Meta is not connected yet and the user hasn't explicitly chosen demo=false, start in Demo mode so all visualizations work immediately
+  if (!realSettings.connected && loadGlobal("demo", null) === null) {
+    setDemo(true);
+  }
   if (isDemo()) {
     seedDemo();
     ctx.settings = await get("/api/settings");
-  } else ctx.settings = settings.status === "fulfilled" ? settings.value : { connected: false };
+  } else {
+    ctx.settings = realSettings;
+  }
   render();
   if (ctx.settings.connected) ctx.loadTree();
 }

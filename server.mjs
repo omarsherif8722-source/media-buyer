@@ -374,6 +374,12 @@ async function handleApi(req, res, urlPath) {
 
   const route = `${req.method} ${urlPath}`;
   if (route === "GET /api/settings") return sendJson(res, 200, meta.settings());
+  if (route === "GET /api/web-events") return sendJson(res, 200, { events: meta.getWebEvents() });
+  if (route === "POST /api/web-event") {
+    const evtBody = await readJson(req);
+    if (!evtBody) return sendJson(res, 400, { error: "Could not read event." });
+    return sendJson(res, 200, meta.recordWebEvent(evtBody));
+  }
   if (!meta.configured()) return sendJson(res, 409, { error: "Meta is not connected yet.", notConnected: true });
   const body = req.method === "POST" ? await readJson(req) : null;
   if (req.method === "POST" && !body) return sendJson(res, 400, { error: "Could not read the request." });

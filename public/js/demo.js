@@ -1,8 +1,8 @@
-// Demo mode: a made-up ad account and lead log, so the dashboard can be shown
-// working before the real G Developments account is connected.
+// Demo mode: a realistic G Developments ad account, daily time-series,
+// geographic attribution across Egypt governorates & GCC hubs, website funnel
+// telemetry, and 2,000+ leads so every visualization and action works live.
 // NOTHING HERE IS REAL. In demo mode every /api call is answered by this file
-// in the browser: no request reaches the server or Meta. Switches, budgets and
-// targeting edits change only this demo copy, which resets on reload.
+// in the browser: no request reaches the server or Meta.
 
 const DAYS = 45; // index 0 = 44 days ago, index 44 = today
 const DEMO_SETTINGS = { connected: true, demo: true, account: "act_demo", readOnly: false, leadForms: true, stagesToMeta: true, version: "demo", maxDailyBudget: null };
@@ -16,13 +16,70 @@ function rng(seed) {
   };
 }
 
-const CITY = { "New Cairo": "1528", Heliopolis: "1529", "Nasr City": "1530", Madinaty: "1531", "Sheikh Zayed": "1540", "6th of October": "1541", Maadi: "1532", Cairo: "1500", Alexandria: "1600", Riyadh: "2100", Jeddah: "2101", Dubai: "2200", "Kuwait City": "2300", Doha: "2400" };
+export const CITY = {
+  "New Cairo": "1528",
+  Heliopolis: "1529",
+  "Nasr City": "1530",
+  Madinaty: "1531",
+  "Sheikh Zayed": "1540",
+  "6th of October": "1541",
+  Maadi: "1532",
+  Cairo: "1500",
+  Giza: "1539",
+  Alexandria: "1600",
+  Mansoura: "1610",
+  Tanta: "1620",
+  Zagazig: "1630",
+  "Port Said": "1640",
+  Ismailia: "1650",
+  Suez: "1660",
+  "Ras El Hekma": "1670",
+  "El Gouna": "1680",
+  Riyadh: "2100",
+  Jeddah: "2101",
+  Dammam: "2102",
+  Dubai: "2200",
+  "Abu Dhabi": "2201",
+  "Kuwait City": "2300",
+  Doha: "2400",
+};
+
+// Maps every city/corridor to its Egypt Governorate (matching egypt-map.json) or GCC country
+export const CITY_TO_GOV = {
+  "New Cairo": "Cairo",
+  Heliopolis: "Cairo",
+  "Nasr City": "Cairo",
+  Madinaty: "Cairo",
+  Maadi: "Cairo",
+  Cairo: "Cairo",
+  "Sheikh Zayed": "Giza",
+  "6th of October": "Giza",
+  Giza: "Giza",
+  Alexandria: "Alexandria",
+  Mansoura: "Dakahlia",
+  Tanta: "Gharbia",
+  Zagazig: "Al Sharqia",
+  "Port Said": "Port Said",
+  Ismailia: "Ismailia",
+  Suez: "Suez",
+  "Ras El Hekma": "Matrouh",
+  "El Gouna": "Red Sea",
+  Riyadh: "GCC · Saudi Arabia",
+  Jeddah: "GCC · Saudi Arabia",
+  Dammam: "GCC · Saudi Arabia",
+  Dubai: "GCC · UAE",
+  "Abu Dhabi": "GCC · UAE",
+  "Kuwait City": "GCC · Kuwait",
+  Doha: "GCC · Qatar",
+};
+
 const AUD = {
   visitors: { id: "238400000001", name: "Krypton page visitors · 30 days", subtype: "WEBSITE", min: 3100, max: 3700 },
   film: { id: "238400000002", name: "Project film viewers 50% · 90 days", subtype: "ENGAGEMENT", min: 41000, max: 48000 },
   openers: { id: "238400000003", name: "Opened lead form, did not send · 30 days", subtype: "ENGAGEMENT", min: 2600, max: 3100 },
   leads: { id: "238400000004", name: "All leads (to exclude)", subtype: "CUSTOM", min: 1000, max: 1500 },
   lal: { id: "238400000005", name: "Lookalike 1% Egypt · valid leads", subtype: "LOOKALIKE", min: 690000, max: 810000 },
+  payment: { id: "238400000006", name: "Website payment plan explorers · 30 days", subtype: "WEBSITE", min: 1850, max: 2300 },
 };
 let interestId = 6003000000000;
 const INTEREST = {};
@@ -42,39 +99,39 @@ const PLAN = [
     name: "GD | Krypton | Leads | Broad | Nov", project: "krypton", form: "Krypton · higher intent",
     sets: [
       { name: "A · Broad East Cairo", budget: 800, cpm: 85, ctr: 1.15, cvr: 9, valid: 22, meet: 42, res: 16, f: 1.2, learning: "SUCCESS", t: tg({ cities: ["New Cairo", "Heliopolis", "Nasr City"], adv: true }), ads: [["film-15s-price", 0.55, 1.1, 1], ["carousel-homes", 0.3, 0.9, 1.1], ["static-price-plan", 0.15, 0.7, 1.3]] },
-      { name: "B · Investors interests", budget: 500, cpm: 95, ctr: 0.95, cvr: 8, valid: 31, meet: 45, res: 18, f: 1.25, learning: "SUCCESS", t: tg({ cities: ["New Cairo", "Heliopolis"], age: [30, 65], interests: ["Real estate investing", "Luxury real estate", "Serviced apartment"] }), ads: [["film-15s-price", 0.6, 1, 1], ["carousel-homes", 0.4, 0.95, 1]] },
-      { name: "C · Warm: visitors and viewers", budget: 200, cpm: 120, ctr: 1.6, cvr: 13, valid: 46, meet: 50, res: 20, f: 1.95, learning: "LEARNING", t: tg({ cities: ["Cairo"], age: [25, 65], include: ["visitors", "film"] }), ads: [["reminder-price-plan", 1, 1, 1]] },
+      { name: "B · Investors interests", budget: 500, cpm: 95, ctr: 0.95, cvr: 8, valid: 31, meet: 45, res: 18, f: 1.25, learning: "SUCCESS", t: tg({ cities: ["New Cairo", "Heliopolis", "Maadi"], age: [30, 65], interests: ["Real estate investing", "Luxury real estate", "Serviced apartment"] }), ads: [["film-15s-price", 0.6, 1, 1], ["carousel-homes", 0.4, 0.95, 1]] },
+      { name: "C · Warm: visitors and viewers", budget: 200, cpm: 120, ctr: 1.6, cvr: 13, valid: 46, meet: 50, res: 20, f: 1.95, learning: "LEARNING", t: tg({ cities: ["Cairo", "New Cairo"], age: [25, 65], include: ["visitors", "film"] }), ads: [["reminder-price-plan", 1, 1, 1]] },
       { name: "D · Gulf expats", budget: 500, cpm: 160, ctr: 0.8, cvr: 6, valid: 27, meet: 35, res: 14, f: 1.15, learning: "FAIL", t: tg({ cities: ["Riyadh", "Jeddah", "Dubai", "Kuwait City"], age: [30, 60], interests: ["Lived in Egypt (formerly expats - Egypt)"] }), ads: [["film-15s-price-gulf", 1, 1, 1]] },
     ],
   },
   {
     name: "GD | Krypton | WhatsApp | Nov", project: "krypton", whatsapp: true, objective: "OUTCOME_ENGAGEMENT",
-    sets: [{ name: "Messages · East Cairo", budget: 300, cpm: 70, ctr: 1.3, cvr: 11, valid: 20, meet: 38, res: 12, f: 1.3, learning: "SUCCESS", optimization: "CONVERSATIONS", t: tg({ cities: ["New Cairo", "Nasr City", "Madinaty"], age: [27, 55] }), ads: [["wa-film-15s", 0.6, 1, 1], ["wa-static-from-price", 0.4, 0.85, 1.1]] }],
+    sets: [{ name: "Messages · East Cairo & Delta", budget: 300, cpm: 70, ctr: 1.3, cvr: 11, valid: 20, meet: 38, res: 12, f: 1.3, learning: "SUCCESS", optimization: "CONVERSATIONS", t: tg({ cities: ["New Cairo", "Nasr City", "Madinaty", "Mansoura", "Tanta"], age: [27, 55] }), ads: [["wa-film-15s", 0.6, 1, 1], ["wa-static-from-price", 0.4, 0.85, 1.1]] }],
   },
   {
     name: "GD | IVY | Leads | Families | Nov", project: "ivy", form: "IVY · higher intent",
     sets: [
-      { name: "A · Broad West Cairo", budget: 600, cpm: 80, ctr: 1.05, cvr: 9, valid: 25, meet: 40, res: 15, f: 1.2, learning: "SUCCESS", t: tg({ cities: ["Sheikh Zayed", "6th of October"], age: [30, 65], adv: true }), ads: [["lake-film-15s", 0.65, 1.05, 1], ["school-carousel", 0.35, 0.9, 1]] },
+      { name: "A · Broad West Cairo", budget: 600, cpm: 80, ctr: 1.05, cvr: 9, valid: 25, meet: 40, res: 15, f: 1.2, learning: "SUCCESS", t: tg({ cities: ["Sheikh Zayed", "6th of October", "Giza"], age: [30, 65], adv: true }), ads: [["lake-film-15s", 0.65, 1.05, 1], ["school-carousel", 0.35, 0.9, 1]] },
       { name: "B · Parents with children", budget: 400, cpm: 90, ctr: 1.0, cvr: 8.5, valid: 33, meet: 44, res: 17, f: 1.3, learning: "SUCCESS", t: tg({ cities: ["Sheikh Zayed", "6th of October"], age: [32, 52], interests: ["Parents with children (6-12 years)", "British international schools"] }), ads: [["school-carousel", 0.5, 1, 1], ["lake-film-15s", 0.5, 1, 1]] },
     ],
   },
   {
     name: "GD | Neon Views | Leads | Villas | Nov", project: "neon-views", form: "Neon Views · higher intent",
     sets: [
-      { name: "A · Broad East Cairo", budget: 500, cpm: 90, ctr: 0.9, cvr: 7.5, valid: 18, meet: 40, res: 14, f: 1.2, learning: "SUCCESS", t: tg({ cities: ["New Cairo", "Heliopolis", "Madinaty"], age: [32, 65], adv: true }), ads: [["townhouse-tour-20s", 0.6, 1, 1], ["villa-carousel", 0.4, 0.9, 1.1]] },
-      { name: "B · Apartment upgraders", budget: 350, cpm: 95, ctr: 0.85, cvr: 7, valid: 27, meet: 42, res: 15, f: 1.25, learning: "LEARNING", t: tg({ cities: ["Nasr City", "Heliopolis"], age: [32, 50], interests: ["Interior design", "Home and garden"] }), ads: [["townhouse-tour-20s", 1, 1, 1]] },
+      { name: "A · Broad East Cairo & Canal", budget: 500, cpm: 90, ctr: 0.9, cvr: 7.5, valid: 18, meet: 40, res: 14, f: 1.2, learning: "SUCCESS", t: tg({ cities: ["New Cairo", "Heliopolis", "Madinaty", "Zagazig", "Ismailia", "Port Said"], age: [32, 65], adv: true }), ads: [["townhouse-tour-20s", 0.6, 1, 1], ["villa-carousel", 0.4, 0.9, 1.1]] },
+      { name: "B · Apartment upgraders", budget: 350, cpm: 95, ctr: 0.85, cvr: 7, valid: 27, meet: 42, res: 15, f: 1.25, learning: "LEARNING", t: tg({ cities: ["Nasr City", "Heliopolis", "New Cairo"], age: [32, 50], interests: ["Interior design", "Home and garden"] }), ads: [["townhouse-tour-20s", 1, 1, 1]] },
     ],
   },
   {
     name: "GD | Seashell Ras El Hekma | Leads | Summer", project: "seashell-rah", form: "Seashell RAH · more volume",
     sets: [
-      { name: "A · Cairo summer homes", budget: 600, cpm: 65, ctr: 0.42, cvr: 16, valid: 6, meet: 30, res: 10, f: 1.3, learning: "SUCCESS", t: tg({ cities: ["Cairo", "Alexandria"], age: [25, 65], interests: ["Beach resort"] }), ads: [["lagoon-static", 0.7, 1, 1], ["beach-carousel", 0.3, 0.9, 1]] },
-      { name: "D · Gulf summer homes", budget: 400, cpm: 150, ctr: 0.75, cvr: 6, valid: 21, meet: 33, res: 12, f: 1.7, learning: "FAIL", t: tg({ cities: ["Riyadh", "Jeddah", "Doha"], age: [30, 60], interests: ["Beach resort", "Frequent international travelers"] }), ads: [["lagoon-film-15s", 1, 1, 1.05]] },
+      { name: "A · Cairo & Alex summer homes", budget: 600, cpm: 65, ctr: 0.42, cvr: 16, valid: 6, meet: 30, res: 10, f: 1.3, learning: "SUCCESS", t: tg({ cities: ["Cairo", "Alexandria", "Ras El Hekma", "Sheikh Zayed"], age: [25, 65], interests: ["Beach resort"] }), ads: [["lagoon-static", 0.7, 1, 1], ["beach-carousel", 0.3, 0.9, 1]] },
+      { name: "D · Gulf summer homes", budget: 400, cpm: 150, ctr: 0.75, cvr: 6, valid: 21, meet: 33, res: 12, f: 1.7, learning: "FAIL", t: tg({ cities: ["Riyadh", "Jeddah", "Doha", "Dubai"], age: [30, 60], interests: ["Beach resort", "Frequent international travelers"] }), ads: [["lagoon-film-15s", 1, 1, 1.05]] },
     ],
   },
   {
     name: "GD | Golf Views | Leads | Oct", project: "golf-views", form: "Golf Views · higher intent", pausedDaysAgo: 9,
-    sets: [{ name: "A · High net worth New Cairo", budget: 500, cpm: 140, ctr: 0.7, cvr: 6, valid: 12, meet: 45, res: 20, f: 1.3, learning: "SUCCESS", t: tg({ cities: ["New Cairo", "Heliopolis"], age: [38, 65], interests: ["Golf", "Luxury real estate"] }), ads: [["fairway-film-20s", 1, 1, 1]] }],
+    sets: [{ name: "A · High net worth New Cairo & Red Sea", budget: 500, cpm: 140, ctr: 0.7, cvr: 6, valid: 12, meet: 45, res: 20, f: 1.3, learning: "SUCCESS", t: tg({ cities: ["New Cairo", "Heliopolis", "Suez", "El Gouna"], age: [38, 65], interests: ["Golf", "Luxury real estate"] }), ads: [["fairway-film-20s", 1, 1, 1]] }],
   },
 ];
 
@@ -105,6 +162,7 @@ function build(catalog) {
     const c = { id: nid(), name: cp.name, project: cp.project, objective: cp.objective || "OUTCOME_LEADS", status: cp.pausedDaysAgo ? "PAUSED" : "ACTIVE", sets: [] };
     for (const sp of cp.sets) {
       const s = { id: nid(), name: sp.name, status: "ACTIVE", budget: sp.budget, sp, targeting: JSON.parse(JSON.stringify(sp.t)), ads: [] };
+      const cities = (sp.t.geo_locations?.cities || []).map((x) => x.name).filter(Boolean);
       for (const [adName, share, ctrX, freqX] of sp.ads) {
         const a = { id: nid(), name: adName, status: "ACTIVE", freqX, rows: [] };
         let carry = r();
@@ -123,15 +181,16 @@ function build(catalog) {
           carry += clicks * (sp.cvr / 100) * (0.8 + r() * 0.4);
           const n = Math.floor(carry);
           carry -= n;
-          a.rows.push({ spend, imps, clicks, leads: cp.whatsapp ? 0 : n, convos: cp.whatsapp ? n : 0, video: imps * 0.31 });
-          // one lead record per lead
+          const lpv = Math.round(clicks * (0.74 + r() * 0.14));
+          a.rows.push({ spend, imps, clicks, lpv, leads: cp.whatsapp ? 0 : n, convos: cp.whatsapp ? n : 0, video: imps * 0.31 });
           for (let k = 0; k < n; k += 1) {
             leadNo += 1;
             const day = dayIso(i);
             let created = new Date(day.getTime() + (9 + r() * 14) * 3600000);
             if (created > now) created = new Date(now.getTime() - r() * Math.max(0.2, now.getHours() - 8) * 3600000);
             if (created < day) created = new Date(day.getTime() + r() * 3600000);
-            leads.push(makeLead({ r, no: leadNo, created, now, c: cp, campaign: c, set: s, ad: a, from: fromOf(cp.project) }));
+            const city = cities.length ? cities[Math.floor(r() * cities.length)] : "New Cairo";
+            leads.push(makeLead({ r, no: leadNo, created, now, c: cp, campaign: c, set: s, ad: a, from: fromOf(cp.project), city }));
           }
         }
         s.ads.push(a);
@@ -143,11 +202,14 @@ function build(catalog) {
   return { campaigns, leads: leads.sort((x, y) => y.created.localeCompare(x.created)), audit: [] };
 }
 
-function makeLead({ r, no, created, now, c, campaign, set, ad, from }) {
+function makeLead({ r, no, created, now, c, campaign, set, ad, from, city }) {
   const sp = set.sp;
   const ageH = (now - created) / 3600000;
   const name = `${FIRST[Math.floor(r() * FIRST.length)]} ${LAST[Math.floor(r() * LAST.length)]}`;
-  const phone = `0100 000 ${String(1000 + (no % 9000)).padStart(4, "0")}`;
+  const isGcc = ["Riyadh", "Jeddah", "Dammam", "Dubai", "Abu Dhabi", "Kuwait City", "Doha"].includes(city);
+  const phone = isGcc
+    ? `+966 50 ${String(100 + (no % 900))} ${String(1000 + (no % 9000))}`
+    : `0100 000 ${String(1000 + (no % 9000)).padStart(4, "0")}`;
   let stage;
   const roll = r();
   if (ageH < 0.4) stage = "new";
@@ -169,6 +231,7 @@ function makeLead({ r, no, created, now, c, campaign, set, ad, from }) {
   const at = created.toISOString();
   const contactAt = stage === "new" ? null : new Date(Math.min(now.getTime(), created.getTime() + (4 + r() * r() * 160) * 60000)).toISOString();
   const valid = ["interested", "meeting", "visited", "reserved", "sold", "lost"].includes(stage);
+  const gov = CITY_TO_GOV[city] || "Cairo";
   const lead = {
     id: `demo_${no}`,
     demo: true,
@@ -177,6 +240,8 @@ function makeLead({ r, no, created, now, c, campaign, set, ad, from }) {
     name,
     phone,
     email: "",
+    city,
+    governorate: gov,
     source: c.whatsapp ? "whatsapp" : "meta-form",
     project: c.project,
     formName: c.whatsapp ? null : c.form,
@@ -197,13 +262,13 @@ function makeLead({ r, no, created, now, c, campaign, set, ad, from }) {
     lead.timeline = ["now", "3m", "3m", "6m"][Math.floor(r() * 4)];
     lead.purpose = c.project === "seashell-rah" ? "second" : r() < 0.35 ? "invest" : "live";
     lead.pay = r() < 0.8 ? "installments" : "cash";
-    lead.notes = VALID_NOTES[Math.floor(r() * VALID_NOTES.length)];
+    lead.notes = `${city} buyer · ${VALID_NOTES[Math.floor(r() * VALID_NOTES.length)]}`;
     if (lead.metaId && ageH > 24 && r() < 0.7) lead.sentToMeta = { [stage === "interested" || stage === "lost" ? "interested" : stage]: contactAt };
   } else if (stage === "low_budget") {
     lead.budget = Math.round((from * (0.3 + r() * 0.45)) / 100000) * 100000;
     lead.notes = BAD[1][2];
   } else if (BAD.some(([s]) => s === stage)) lead.notes = BAD.find(([s]) => s === stage)[2];
-  if (!c.whatsapp) lead.answers = { "when_are_you_planning_to_buy?": valid ? "Within 3 months" : "Later than 6 months", "how_would_you_like_to_pay?": lead.pay === "cash" ? "Cash" : "Installments" };
+  if (!c.whatsapp) lead.answers = { "what_city_do_you_live_in?": city, "when_are_you_planning_to_buy?": valid ? "Within 3 months" : "Later than 6 months", "how_would_you_like_to_pay?": lead.pay === "cash" ? "Cash" : "Installments" };
   return lead;
 }
 
@@ -220,13 +285,14 @@ function rangeIdx(range) {
 }
 
 function sumRows(rows, [a, b]) {
-  const t = { spend: 0, imps: 0, clicks: 0, leads: 0, convos: 0, video: 0, days: 0 };
+  const t = { spend: 0, imps: 0, clicks: 0, lpv: 0, leads: 0, convos: 0, video: 0, days: 0 };
   for (let i = a; i <= b; i += 1) {
     const x = rows[i];
     if (!x) continue;
     t.spend += x.spend;
     t.imps += x.imps;
     t.clicks += x.clicks;
+    t.lpv += x.lpv || Math.round(x.clicks * 0.78);
     t.leads += x.leads;
     t.convos += x.convos;
     t.video += x.video;
@@ -250,9 +316,9 @@ function toMetrics(t, f, idx) {
     cpm: imps ? Math.round((t.spend / imps) * 100000) / 100 : 0,
     leads: t.leads,
     convos: t.convos,
-    landingViews: 0,
+    landingViews: Math.round(t.lpv || t.clicks * 0.78),
     videoViews: Math.round(t.video),
-    contacts: 0,
+    contacts: Math.round((t.leads + t.convos) * 0.35),
     dateStart: ymd(dayIso(idx[0])),
     dateStop: ymd(dayIso(idx[1])),
   };
@@ -291,20 +357,54 @@ export function createDemo(catalog) {
     return x;
   };
 
+  function dailySeries(idx, filterCampaignId = null) {
+    const [a, b] = idx;
+    const out = [];
+    for (let i = a; i <= b; i += 1) {
+      const date = ymd(dayIso(i));
+      let spend = 0, imps = 0, clicks = 0, lpv = 0, leads = 0, convos = 0;
+      for (const c of state.campaigns) {
+        if (filterCampaignId && c.id !== filterCampaignId) continue;
+        for (const s of c.sets) {
+          for (const ad of s.ads) {
+            const row = ad.rows[i];
+            if (!row) continue;
+            spend += row.spend;
+            imps += row.imps;
+            clicks += row.clicks;
+            lpv += row.lpv || row.clicks * 0.78;
+            leads += row.leads;
+            convos += row.convos;
+          }
+        }
+      }
+      out.push({
+        date,
+        spend: Math.round(spend * 100) / 100,
+        impressions: Math.round(imps),
+        linkClicks: Math.round(clicks),
+        landingViews: Math.round(lpv),
+        leads: leads + convos,
+      });
+    }
+    return out;
+  }
+
   function tree(range) {
     const idx = rangeIdx(range);
     return {
       account: { id: "act_demo", name: "Demo account (made-up data)", business: "G Developments (demo)", currency: "EGP", timezone: "Africa/Cairo", status: 1, amountSpent: null, spendCap: null },
-      range: { preset: range },
+      range: { preset: range, since: ymd(dayIso(idx[0])), until: ymd(dayIso(idx[1])) },
       fetchedAt: new Date().toISOString(),
       readOnly: false,
       demo: true,
+      daily: dailySeries(idx),
       campaigns: state.campaigns.map((c) => {
-        let ct = { spend: 0, imps: 0, clicks: 0, leads: 0, convos: 0, video: 0, days: 0 };
+        let ct = { spend: 0, imps: 0, clicks: 0, lpv: 0, leads: 0, convos: 0, video: 0, days: 0 };
         let fSum = 0;
         let fW = 0;
         const adsets = c.sets.map((s) => {
-          let st = { spend: 0, imps: 0, clicks: 0, leads: 0, convos: 0, video: 0, days: 0 };
+          let st = { spend: 0, imps: 0, clicks: 0, lpv: 0, leads: 0, convos: 0, video: 0, days: 0 };
           const ads = s.ads.map((a) => {
             const t = sumRows(a.rows, idx);
             st = add(st, t);
@@ -313,26 +413,26 @@ export function createDemo(catalog) {
           ct = add(ct, st);
           fSum += s.sp.f * st.imps;
           fW += st.imps;
-          return { id: s.id, name: s.name, status: s.status, effectiveStatus: eff(s.status, c.status !== "ACTIVE", "CAMPAIGN"), dailyBudget: s.budget, lifetimeBudget: null, optimization: s.sp.optimization || "LEAD_GENERATION", destination: c.objective === "OUTCOME_ENGAGEMENT" ? "WHATSAPP" : "ON_AD", bidStrategy: "LOWEST_COST_WITHOUT_CAP", learning: s.sp.learning, targeting: describeTargeting(s.targeting), m: toMetrics(st, s.sp.f, idx), ads };
+          return { id: s.id, name: s.name, status: s.status, effectiveStatus: eff(s.status, c.status !== "ACTIVE", "CAMPAIGN"), dailyBudget: s.budget, lifetimeBudget: null, optimization: s.sp.optimization || "LEAD_GENERATION", destination: c.objective === "OUTCOME_ENGAGEMENT" ? "WHATSAPP" : "ON_AD", bidStrategy: "LOWEST_COST_WITHOUT_CAP", learning: s.sp.learning, targeting: describeTargeting(s.targeting), rawTargeting: s.targeting, m: toMetrics(st, s.sp.f, idx), ads };
         });
-        return { id: c.id, name: c.name, status: c.status, effectiveStatus: c.status, objective: c.objective, dailyBudget: null, lifetimeBudget: null, bidStrategy: null, specialCategories: [], created: null, m: toMetrics(ct, fW ? fSum / fW : 1.2, idx), adsets };
+        return { id: c.id, name: c.name, status: c.status, effectiveStatus: c.status, objective: c.objective, dailyBudget: null, lifetimeBudget: null, bidStrategy: null, specialCategories: [], created: null, m: toMetrics(ct, fW ? fSum / fW : 1.2, idx), daily: dailySeries(idx, c.id), adsets };
       }),
     };
   }
 
-  const wait = (v, ms = 220) => new Promise((done) => setTimeout(() => done(v), ms));
+  const wait = (v, ms = 120) => new Promise((done) => setTimeout(() => done(v), ms));
   const fail = (msg) => Promise.reject(Object.assign(new Error(msg), { status: 400 }));
 
   const INTERESTS = ["Real estate investing", "Luxury real estate", "Real estate", "Serviced apartment", "Golf", "Parents with children (6-12 years)", "Parents with teenagers (13-17 years)", "British international schools", "Interior design", "Home and garden", "Beach resort", "Frequent international travelers", "Business owners", "Lived in Egypt (formerly expats - Egypt)"];
-  const PLACES = [...Object.keys(CITY).map((n) => ({ key: CITY[n], name: n, type: "city", country: ["Riyadh", "Jeddah"].includes(n) ? "SA" : n === "Dubai" ? "AE" : n === "Kuwait City" ? "KW" : n === "Doha" ? "QA" : "EG" })), { key: "EG", name: "Egypt", type: "country", country: "EG" }, { key: "SA", name: "Saudi Arabia", type: "country", country: "SA" }, { key: "AE", name: "United Arab Emirates", type: "country", country: "AE" }];
+  const PLACES = [...Object.keys(CITY).map((n) => ({ key: CITY[n], name: n, type: "city", country: ["Riyadh", "Jeddah", "Dammam"].includes(n) ? "SA" : ["Dubai", "Abu Dhabi"].includes(n) ? "AE" : n === "Kuwait City" ? "KW" : n === "Doha" ? "QA" : "EG" })), { key: "EG", name: "Egypt", type: "country", country: "EG" }, { key: "SA", name: "Saudi Arabia", type: "country", country: "SA" }, { key: "AE", name: "United Arab Emirates", type: "country", country: "AE" }];
   const JOBS = ["Doctor", "Dentist", "Physician", "Surgeon", "Business owner", "Engineer", "Pharmacist"];
 
   async function get(path, params = {}) {
     switch (path) {
       case "/api/settings":
-        return wait(DEMO_SETTINGS, 60);
+        return wait(DEMO_SETTINGS, 40);
       case "/api/tree":
-        return wait(tree(params.range || "last_7d"), 350);
+        return wait(tree(params.range || "last_7d"), 160);
       case "/api/targeting": {
         const f = find(params.id);
         if (!f) return fail("Not found in the demo account.");
@@ -348,8 +448,9 @@ export function createDemo(catalog) {
         return wait(Object.values(AUD));
       case "/api/audit":
         return wait(state.audit);
+      case "/api/web-events":
+        return wait({ events: [] });
       case "/api/leads": {
-        // A few people "just sent" the form, so the pull can be shown.
         const r = rng(Date.now() & 0xffff);
         const live = state.campaigns.filter((c) => c.status === "ACTIVE" && !c.name.includes("WhatsApp"));
         const n = 1 + Math.floor(r() * 3);
@@ -361,7 +462,7 @@ export function createDemo(catalog) {
           const no = 50000 + Math.floor(r() * 49999);
           leads.push({ metaId: String(9200000000000000 + no), created: new Date(Date.now() - r() * 20 * 60000).toISOString(), formId: "demo", formName: PLAN.find((p) => p.name === c.name)?.form || "Demo form", adId: a.id, adName: a.name, adsetId: s.id, adsetName: s.name, campaignId: c.id, campaignName: c.name, platform: r() < 0.6 ? "ig" : "fb", organic: false, fields: { full_name: `${FIRST[Math.floor(r() * FIRST.length)]} ${LAST[Math.floor(r() * LAST.length)]}`, phone_number: `0100 000 ${String(no % 10000).padStart(4, "0")}`, "what_budget_do_you_have_in_mind?": r() < 0.6 ? "Matches the starting price" : "Below the starting price", "when_are_you_planning_to_buy?": r() < 0.5 ? "Within 3 months" : "3 to 6 months" } });
         }
-        return wait({ forms: [{ id: "demo", name: "Demo forms", status: "ACTIVE" }], leads, since: 0 }, 500);
+        return wait({ forms: [{ id: "demo", name: "Demo forms", status: "ACTIVE" }], leads, since: 0 }, 220);
       }
       default:
         return fail("Not available in demo mode.");
@@ -393,7 +494,6 @@ export function createDemo(catalog) {
       const next = { ...f.o.targeting, ...(body.patch || {}) };
       for (const [k, v] of Object.entries(body.patch || {})) if (v === null || (Array.isArray(v) && !v.length)) delete next[k];
       if (next.geo_locations) {
-        // keep names for places added in the editor (the API only sends keys)
         const byKey = Object.fromEntries(Object.entries(CITY).map(([n, k]) => [k, n]));
         next.geo_locations = { ...next.geo_locations, cities: (next.geo_locations.cities || []).map((c) => ({ ...c, name: c.name || byKey[c.key] || c.key })) };
       }
@@ -401,6 +501,7 @@ export function createDemo(catalog) {
       return wait(log({ action: "targeting", id: f.o.id, name: f.o.name, from: before, to: describeTargeting(next) }));
     }
     if (path === "/api/lead-stage") return wait(log({ action: "lead-stage", id: String(body.leadId), name: body.event, to: 1 }));
+    if (path === "/api/web-event") return wait({ ok: true });
     return fail("Not available in demo mode.");
   }
 

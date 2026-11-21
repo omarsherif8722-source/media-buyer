@@ -1,16 +1,18 @@
-// Lead log and lead quality. Every lead gets a stage after the first call;
-// that stage is what turns "leads" into "valid leads" on every other screen.
+// Lead log, A/B/C/D lead grading, geographic corridor attribution, speed-to-lead
+// SLA distribution chart, and batch Meta Conversions API (CAPI) sync.
 import { html, raw, $, toast, confirmDialog, n, pct, ago, dateTime, egp, readTable, pickFile, download, toCSV, esc } from "../ui.js";
 import { get, post } from "../api.js";
 import { load, save, targets, stageEvents } from "../store.js";
 import {
   STAGES, STAGE, SOURCES, TIMELINES, PURPOSES, PAYS, isValid, isWaiting, isBad, MEETING_UP, RESERVED_UP,
   allLeads, addLead, updateLead, removeLead, replaceAll, mergeMetaLeads, leadFromCsv, projectFromName, budgetFit, median,
+  scoreLeadGrade, EGYPT_CORRIDORS,
 } from "../model.js";
 import { kpi } from "./common.js";
 
-let groupFilter = "all"; // all | waiting | valid | bad
+let groupFilter = "all"; // all | gradeA | waiting | valid | bad
 let projectFilter = "";
+let cityFilter = "";
 let range = "30"; // days, or "all"
 let text = "";
 let limit = 60;
@@ -36,7 +38,36 @@ function funnel(list) {
   const meet = list.filter((l) => MEETING_UP.has(l.stage)).length;
   const res = list.filter((l) => RESERVED_UP.has(l.stage)).length;
   const step = (label, v, of, key) => html`<div class="${key ? "key" : ""}"><span>${label}</span><b>${n(v)}</b><small>${of ? `${pct((v / of) * 100, 0)} of previous` : ""}</small><div class="bar"><i style="width:${all ? Math.round((v / all) * 100) : 0}%"></i></div></div>`;
-  return html`<div class="funnel">${step("All leads", all, 0)}${step("Contacted", contacted, all)}${step("Valid (real interest)", valid, contacted, true)}${step("Meeting or visit", meet, valid)}${step("Reserved or sold", res, meet)}</div>`;
+  return html`<div class="funnel">${step("All leads", all, 0)}${step("Contacted", contacted, all)}${step("Valid (real interest)", valid, contacted, true)}${step("Meeting or visit", meet, valid)}${step("Reserved or sold", res, meet, true)}</div>`;
+}
+
+function speedToLeadChart(list) {
+  const buckets = [
+    { label: "Under 15 min (Target SLA)", max: 15, total: 0, valid: 0, tone: "good" },
+    { label: "15 – 60 min", max: 60, total: 0, valid: 0, tone: "info" },
+    { label: "1 – 4 hours", max: 240, total: 0, valid: 0, tone: "warn" },
+    { label: "Over 4 hours", max: Infinity, total: 0, valid: 0, tone: "bad" },
+  ];
+  for (const l of list) {
+    if (!l.firstContactAt || !l.created) continue;
+    const mins = (new Date(l.firstContactAt) - new Date(l.created)) / 60000;
+    if (mins < 0) continue;
+    const b = buckets.find((x) => mins <= x.max) || buckets[3];
+    b.total += 1;
+    if (isValid(l.stage)) b.valid += 1;
+  }
+  return html`
+  <div class="grid g4" style="grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px">
+    ${buckets.map((b) => {
+      const rate = b.total > 0 ? (b.valid / b.total) * 100 : null;
+      return html`<div class="kpi">
+        <span>${b.label}</span>
+        <b>${pct(rate, 0)} <small style="display:inline;font-size:12px">valid rate</small></b>
+        <small>${n(b.valid)} valid of ${n(b.total)} called</small>
+        <div class="bar" style="margin-top:6px"><i style="width:${rate ? Math.min(100, Math.round(rate * 2)) : 0}%;background:var(--${b.tone})"></i></div>
+      </div>`;
+    })}
+  </div>`;
 }
 
 function qualityTable(list) {
@@ -68,6 +99,7 @@ function qualityTable(list) {
 function leadCard(l, ctx, t) {
   const p = ctx.catalog?.projects?.find((x) => x.id === l.project);
   const fit = budgetFit(l, ctx.catalog);
+  const grade = scoreLeadGrade(l, ctx.catalog);
   const late = l.stage === "new" && Date.now() - new Date(l.created).getTime() > t.speedToLead * 60000;
   const wa = waNumber(l.phone);
   const projectName = p?.name || "";
@@ -77,8 +109,17 @@ function leadCard(l, ctx, t) {
   const source = [SOURCES.find((s) => s[0] === l.source)?.[1], l.campaignName, l.adsetName, l.adName, l.ref ? `ref ${l.ref}` : ""].filter(Boolean).join(" › ");
   return html`<article class="lead" data-lead="${l.id}">
     <div class="lead-top">
-      <div><div class="lead-name">${l.name || "No name"}</div>
-        <div class="lead-meta"><span class="${late ? "late" : ""}">${late ? "Waiting " : ""}${ago(l.created)}</span>${l.phone ? html`<span class="mono">${l.phone}</span>` : ""}${l.email ? html`<span>${l.email}</span>` : ""}</div>
+      <div>
+        <div class="row wrap" style="gap:6px">
+          <span class="pill ${grade.tone}" title="${grade.reasons.join(" · ")}">Grade ${grade.grade} (${grade.points})</span>
+          <div class="lead-name">${l.name || "No name"}</div>
+          ${l.city ? html`<span class="pill line">📍 ${l.city}</span>` : ""}
+        </div>
+        <div class="lead-meta" style="margin-top:3px">
+          <span class="${late ? "late" : ""}">${late ? "Waiting " : ""}${ago(l.created)}</span>
+          ${l.phone ? html`<span class="mono">${l.phone}</span>` : ""}
+          ${l.email ? html`<span>${l.email}</span>` : ""}
+        </div>
       </div>
       <div class="row wrap">
         ${wa ? html`<a class="btn sm" href="https://wa.me/${wa}?text=${encodeURIComponent(waText)}" target="_blank" rel="noopener" data-contact>WhatsApp</a><a class="btn sm" href="tel:+${wa}" data-contact>Call</a>` : ""}
@@ -88,6 +129,7 @@ function leadCard(l, ctx, t) {
     <div class="lead-meta">${source ? html`<span>${source}</span>` : ""}${l.formName ? html`<span>Form: ${l.formName}</span>` : ""}</div>
     <div class="row wrap">
       <select class="input" data-field="project" aria-label="Project"><option value="">Project…</option>${(ctx.catalog?.projects || []).map((x) => html`<option value="${x.id}" ${x.id === l.project ? raw("selected") : ""}>${x.name}</option>`)}</select>
+      <select class="input" data-field="city" aria-label="City Corridor"><option value="">City / Area…</option>${EGYPT_CORRIDORS.map((c) => html`<option value="${c.id}" ${c.id === l.city ? raw("selected") : ""}>${c.id} (${c.gov})</option>`)}</select>
       <input class="input" style="width:150px" type="number" inputmode="numeric" min="0" step="100000" placeholder="Budget (EGP)" data-field="budget" value="${l.budget || ""}" aria-label="Budget in EGP">
       <select class="input" data-field="timeline" aria-label="When">${opts(TIMELINES, l.timeline)}</select>
       <select class="input" data-field="purpose" aria-label="Purpose">${opts(PURPOSES, l.purpose)}</select>
@@ -113,20 +155,24 @@ export function render(ctx) {
   const s = text.trim().toLowerCase();
   const shown = dated.filter(
     (l) =>
-      (groupFilter === "all" || STAGE[l.stage]?.group === groupFilter) &&
+      (groupFilter === "all" || (groupFilter === "gradeA" ? scoreLeadGrade(l, ctx.catalog).grade === "A" : STAGE[l.stage]?.group === groupFilter)) &&
       (!projectFilter || l.project === projectFilter) &&
-      (!s || [l.name, l.phone, l.email, l.campaignName, l.adName, l.notes, l.ref].some((x) => String(x || "").toLowerCase().includes(s))),
+      (!cityFilter || l.city === cityFilter) &&
+      (!s || [l.name, l.phone, l.email, l.city, l.campaignName, l.adName, l.notes, l.ref].some((x) => String(x || "").toLowerCase().includes(s))),
   );
   const waiting = dated.filter((l) => isWaiting(l.stage)).length;
   const valid = dated.filter((l) => isValid(l.stage)).length;
+  const gradeACount = dated.filter((l) => scoreLeadGrade(l, ctx.catalog).grade === "A").length;
   const contacted = dated.filter((l) => l.stage !== "new").length;
+  const unsentValid = dated.filter((l) => ctx.settings?.stagesToMeta && l.metaId && isValid(l.stage) && !l.sentToMeta?.[l.stage]);
   const med = median(dated.filter((l) => l.firstContactAt).map((l) => (new Date(l.firstContactAt) - new Date(l.created)) / 60000).filter((m) => m >= 0));
   const auto = load("autoStages", false);
   return html`
-  <div class="top"><div><h1>Leads</h1><p class="sub">After the first call, give each lead a stage. "Real interest" and every stage after it count as a valid lead, which is how campaigns are judged here.</p></div>
+  <div class="top"><div><h1>Leads &amp; Sales CRM</h1><p class="sub">After the first call, give each lead a stage. "Real interest" and every stage after it count as a valid buyer, which drives campaign CPVL and Meta CAPI optimization.</p></div>
     <div class="top-actions">
       <button class="btn primary" type="button" data-add>Add lead</button>
       ${ctx.settings?.leadForms ? html`<button class="btn" type="button" data-pull>Get new leads from Meta</button>` : ""}
+      ${unsentValid.length ? html`<button class="btn" type="button" data-sync-capi>Sync ${n(unsentValid.length)} Valid Leads to Meta CAPI</button>` : ""}
       <button class="btn" type="button" data-import>Import CSV</button>
       <button class="btn" type="button" data-export>Export CSV</button>
       <button class="btn ghost" type="button" data-backup>Backup</button>
@@ -139,19 +185,22 @@ export function render(ctx) {
   </div>
   <div class="kpis" style="margin-bottom:14px">
     ${kpi("Leads", n(dated.length))}
+    ${kpi("Grade A Hot Buyers", n(gradeACount), "Budget & timeline fit", true)}
     ${kpi("Waiting for a call", n(waiting), waiting ? "call them first" : "", false)}
     ${kpi("Valid leads", n(valid), "", true)}
     ${kpi("Valid rate", pct(contacted ? (valid / contacted) * 100 : null, 0), "of contacted", true)}
     ${kpi("Median reply time", med === null ? "—" : med < 60 ? `${Math.round(med)} min` : `${(med / 60).toFixed(1)} h`, `target under ${t.speedToLead} min`)}
   </div>
   <div class="card">${funnel(dated)}</div>
+  <div class="card"><div class="card-head"><div><h2>Speed-to-Lead SLA Impact on Valid Buyer Rate</h2><p>How fast sales calls a new lead directly controls the valid qualification rate.</p></div></div>${speedToLeadChart(dated)}</div>
   <div class="card"><div class="card-head"><div><h2>Lead quality by campaign</h2><p>Which campaigns bring people who really want to buy. Spend and cost per valid lead are on Campaigns.</p></div></div>${qualityTable(dated)}</div>
   <div class="card">
-    <div class="card-head"><h2>Lead list</h2>
+    <div class="card-head"><h2>Lead list (${n(shown.length)})</h2>
       <div class="row wrap">
-        <div class="seg" role="group" aria-label="Stage">${[["all", "All"], ["waiting", "Waiting"], ["valid", "Valid"], ["bad", "Not valid"]].map(([v, l]) => html`<button type="button" data-group="${v}" aria-pressed="${groupFilter === v}">${l}</button>`)}</div>
+        <div class="seg" role="group" aria-label="Stage">${[["all", "All"], ["gradeA", "Grade A"], ["waiting", "Waiting"], ["valid", "Valid"], ["bad", "Not valid"]].map(([v, l]) => html`<button type="button" data-group="${v}" aria-pressed="${groupFilter === v}">${l}</button>`)}</div>
         <select class="input" style="width:auto" data-project-filter aria-label="Project"><option value="">All projects</option>${(ctx.catalog?.projects || []).map((p) => html`<option value="${p.id}" ${projectFilter === p.id ? raw("selected") : ""}>${p.name}</option>`)}</select>
-        <input class="input" style="width:200px" type="search" placeholder="Search name, phone, campaign" value="${text}" data-text aria-label="Search leads">
+        <select class="input" style="width:auto" data-city-filter aria-label="City Corridor"><option value="">All cities</option>${EGYPT_CORRIDORS.map((c) => html`<option value="${c.id}" ${cityFilter === c.id ? raw("selected") : ""}>${c.id}</option>`)}</select>
+        <input class="input" style="width:200px" type="search" placeholder="Search name, phone, city, campaign" value="${text}" data-text aria-label="Search leads">
       </div>
     </div>
     ${shown.length ? html`${shown.slice(0, limit).map((l) => leadCard(l, ctx, t))}${shown.length > limit ? html`<div class="row" style="justify-content:center;margin-top:10px"><button class="btn" type="button" data-more-leads>Show ${Math.min(60, shown.length - limit)} more of ${shown.length - limit}</button></div>` : ""}` : html`<div class="empty"><h3>${all.length ? "No leads match" : "No leads yet"}</h3><p>${all.length ? "Change the filters above." : "Add a lead by hand, import Meta's lead download, or connect lead forms."}</p></div>`}
@@ -169,6 +218,7 @@ function addDialog(ctx) {
       <label class="field"><span>Name</span><input class="input" name="name" autocomplete="off"></label>
       <label class="field"><span>Phone</span><input class="input" name="phone" type="tel" inputmode="tel" autocomplete="off" required></label>
       <label class="field"><span>Project</span><select class="input" name="project"><option value="">—</option>${(ctx.catalog?.projects || []).map((p) => html`<option value="${p.id}">${p.name}</option>`)}</select></label>
+      <label class="field"><span>City / Corridor</span><select class="input" name="city">${EGYPT_CORRIDORS.map((c) => html`<option value="${c.id}">${c.id} (${c.gov})</option>`)}</select></label>
       <label class="field"><span>Came from</span><select class="input" name="source">${SOURCES.map(([v, l]) => html`<option value="${v}" ${v === "whatsapp" ? raw("selected") : ""}>${l}</option>`)}</select></label>
       ${links.length ? html`<label class="field"><span>Ref code (from the WhatsApp message)</span><select class="input" name="ref"><option value="">—</option>${links.map((k) => html`<option value="${k.ref}">${k.ref} · ${k.campaign || ""} ${k.content || ""}</option>`)}</select></label>` : ""}
       ${campaigns.length ? html`<label class="field"><span>Campaign</span><select class="input" name="campaign"><option value="">—</option>${campaigns.map((c) => html`<option value="${c.id}">${c.name}</option>`)}</select></label>` : html`<label class="field"><span>Campaign name</span><input class="input" name="campaignName"></label>`}
@@ -187,6 +237,7 @@ function addDialog(ctx) {
         name: String(f.get("name") || "").trim(),
         phone: String(f.get("phone") || "").trim(),
         project: f.get("project") || link?.project || null,
+        city: String(f.get("city") || "New Cairo"),
         source: f.get("source") || "other",
         ref: ref || null,
         campaignId: camp?.id || null,
@@ -217,6 +268,28 @@ async function pull(ctx, btn) {
     btn.disabled = false;
     btn.textContent = "Get new leads from Meta";
   }
+}
+
+async function batchSyncCapi(ctx, btn) {
+  const unsent = allLeads().filter((l) => l.metaId && isValid(l.stage) && !l.sentToMeta?.[l.stage]).slice(0, 25);
+  if (!unsent.length) return toast("All valid leads are already synced to Meta.", "good");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Syncing to Meta CAPI';
+  let sentCount = 0;
+  for (const l of unsent) {
+    const event = stageEvents()[l.stage];
+    if (!event) continue;
+    try {
+      await post("/api/lead-stage", { leadId: l.metaId, event });
+      updateLead(l.id, { sentToMeta: { ...(l.sentToMeta || {}), [l.stage]: new Date().toISOString() } });
+      sentCount += 1;
+    } catch {
+      break;
+    }
+  }
+  btn.disabled = false;
+  toast(`Synced ${sentCount} valid buyer outcomes to Meta Conversions API.`, "good");
+  ctx.render();
 }
 
 async function importCsv(ctx) {
@@ -250,8 +323,8 @@ async function importCsv(ctx) {
 }
 
 function exportCsv(ctx) {
-  const head = ["created", "name", "phone", "email", "project", "source", "campaign_name", "adset_name", "ad_name", "ref", "stage", "stage_label", "valid", "budget_egp", "timeline", "purpose", "payment", "first_contact", "notes", "meta_lead_id"];
-  const rows = allLeads().map((l) => [l.created, l.name, l.phone, l.email, ctx.catalog?.projects?.find((p) => p.id === l.project)?.name || l.project, l.source, l.campaignName, l.adsetName, l.adName, l.ref, l.stage, STAGE[l.stage]?.label, isValid(l.stage) ? "yes" : "no", l.budget, l.timeline, l.purpose, l.pay, l.firstContactAt, l.notes, l.metaId]);
+  const head = ["created", "name", "phone", "email", "city", "governorate", "grade", "project", "source", "campaign_name", "adset_name", "ad_name", "ref", "stage", "stage_label", "valid", "budget_egp", "timeline", "purpose", "payment", "first_contact", "notes", "meta_lead_id"];
+  const rows = allLeads().map((l) => [l.created, l.name, l.phone, l.email, l.city || "", l.governorate || "", scoreLeadGrade(l, ctx.catalog).grade, ctx.catalog?.projects?.find((p) => p.id === l.project)?.name || l.project, l.source, l.campaignName, l.adsetName, l.adName, l.ref, l.stage, STAGE[l.stage]?.label, isValid(l.stage) ? "yes" : "no", l.budget, l.timeline, l.purpose, l.pay, l.firstContactAt, l.notes, l.metaId]);
   download(`g-leads-${new Date().toISOString().slice(0, 10)}.csv`, toCSV([head, ...rows]));
 }
 
@@ -296,6 +369,7 @@ export function mount(root, ctx) {
     const el = e.target;
     if (el.closest("[data-add]")) return addDialog(ctx);
     if (el.closest("[data-pull]")) return pull(ctx, el.closest("[data-pull]"));
+    if (el.closest("[data-sync-capi]")) return batchSyncCapi(ctx, el.closest("[data-sync-capi]"));
     if (el.closest("[data-import]")) return importCsv(ctx);
     if (el.closest("[data-export]")) return exportCsv(ctx);
     if (el.closest("[data-backup]")) return backup();
@@ -326,7 +400,6 @@ export function mount(root, ctx) {
     }
     if (el.closest("[data-send]")) return sendStage(ctx, l);
     if (el.closest("[data-contact]") && l.stage === "new") {
-      // Opening WhatsApp or the dialler counts as the first contact attempt.
       setTimeout(() => updateLead(l.id, { stage: "no_answer" }), 400);
     }
   };
@@ -335,6 +408,10 @@ export function mount(root, ctx) {
     if (el.matches("[data-auto]")) return save("autoStages", el.checked);
     if (el.matches("[data-project-filter]")) {
       projectFilter = el.value;
+      return ctx.render();
+    }
+    if (el.matches("[data-city-filter]")) {
+      cityFilter = el.value;
       return ctx.render();
     }
     const card = el.closest("[data-lead]");

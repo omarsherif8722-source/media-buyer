@@ -11,15 +11,17 @@ It merges two earlier projects:
 
 | Screen | Use it to |
 | --- | --- |
-| Overview | See spend, leads, valid leads, cost per valid lead, meetings and reservations for the chosen dates; what needs attention; who to call first; your targets. |
-| Campaigns | Switch between campaigns in one click. Turn campaigns, ad sets and ads on or off. Change budgets. Open the targeting editor. Read Meta's numbers next to valid leads and cost per valid lead. |
-| Budget planner | Turn a monthly budget into valid leads, meetings and reservations, or work back from a reservation goal. |
-| Leads | Log every lead and give it a stage after the first call. Pull Meta lead-form leads, import Meta's lead download, export, back up. Lead quality by campaign. |
-| Audiences | Who buys each project, where they live, interests to try, ad sets to start with, custom audiences to build, and customer lists for lookalikes. |
-| Messages | Prices and plans per project, angles, ready ad copy in English and Egyptian Arabic, and lead-form questions that filter for real buyers. |
-| Tracked links | Website links with UTM tags, Meta's URL parameters, and WhatsApp links with a ref code that traces a lead to its ad. |
-| What to sell | Availability and prices per project, so money goes where there are homes to sell. |
-| Playbook | The daily and weekly routine and the rules for turning things off and up. |
+| Command Center (`overview`) | Executive KPI pulse, Dual-Axis SVG Daily Spend vs. Valid Buyers Trend chart, Full-Funnel Conversion Waterfall, 1-Click Decision & Action Engine (Scale +20%, Pause waste, Widen geo), G Developments Portfolio Spend vs. Valid Buyers & ATS Stock matrix, and Grade-A Priority Speed-to-Lead Queue. |
+| Egypt & GCC Map (`geo`) | Interactive vector geo-intelligence map of Egypt (Greater Cairo & Nile Delta zoom, All 27 Egypt Governorates, and GCC Expat Hubs: KSA, UAE, Kuwait, Qatar). Color-code by Spend, Valid Buyers, Cost/Valid Lead, Valid Rate %, or Reservations. Click any corridor or governorate to inspect active ad sets and execute 1-click geo retargeting, +20% scaling, exclusion, or 1% Lookalike buyer list export. |
+| Website Funnel (`website`) | Live bridge between Meta campaigns and `mahmoud-elhemaly.onrender.com`: Ad Clicks → Landing Page Views (LPV load rate) → On-site Micro-Conversions (Residences tab, Future Home payment finder, 4K film plays, brochure requests) → Direct WhatsApp/Call/Brief macro conversions → Valid Buyers, plus per-project CRO diagnosis and Meta Pixel / CAPI / Umami setup. |
+| Campaigns (`campaigns`) | Switch between campaigns in one click. Automated Media Buyer Verdict badges (`Scale +20%`, `Winner · Hold`, `Creative fatigue`, `Fix hook`, `Learning limited`, `Pause waste`), daily campaign sparkline, 1-click +20% budget scaling, status switches, and full targeting editor. |
+| Budget planner (`planner`) | Turn a monthly budget into valid leads, meetings and reservations, or work back from a reservation goal. |
+| Leads & CRM (`leads`) | Log every lead with automated **Grade A/B/C/D** scoring and **City/Corridor attribution**, Speed-to-Lead SLA conversion chart, 1-click batch sync of valid stages to Meta Conversions API (CAPI), Meta lead-form pull, UTF-16/tab CSV import, export, and backup. |
+| Audiences (`audiences`) | Who buys each project, where they live, interests to try, ad sets to start with, custom audiences to build, and customer lists for lookalikes. |
+| Messages & Copy (`messages`) | Prices and plans per project, angles, ready ad copy in English and Egyptian Arabic, and lead-form questions that filter for real buyers. |
+| Tracked links (`links`) | Website links with UTM tags, Meta's URL parameters, and WhatsApp links with a ref code that traces a lead to its ad. |
+| What to sell (`inventory`) | Availability and prices per project from Primary ATS (1,787 units), so money goes where there are homes to sell. |
+| Playbook (`guide`) | The daily and weekly routine and the rules for turning things off and up. |
 
 ### Demo mode
 
