@@ -7,6 +7,8 @@ import { allLeads, onLeads, reloadLeads, replaceAll } from "./model.js";
 import { createDemo, DEMO_TARGETS } from "./demo.js";
 import * as overview from "./views/overview.js";
 import * as geo from "./views/geo.js";
+import * as reach from "./views/reach.js";
+import * as abtests from "./views/abtests.js";
 import * as website from "./views/website.js";
 import * as campaigns from "./views/campaigns.js";
 import * as planner from "./views/planner.js";
@@ -36,8 +38,10 @@ const icon = (k) => raw(`<svg viewBox="0 0 24 24" width="18" height="18" fill="n
 const VIEWS = [
   { id: "overview", label: "Command Center", icon: "home", mod: overview },
   { id: "geo", label: "Egypt & GCC Map", icon: "map", group: "Intelligence", mod: geo },
+  { id: "reach", label: "Who & where", icon: "web", group: "Intelligence", mod: reach },
   { id: "website", label: "Website Funnel", icon: "web", group: "Intelligence", mod: website },
   { id: "campaigns", label: "Campaigns", icon: "ads", group: "Ads", mod: campaigns },
+  { id: "abtests", label: "A/B tests", icon: "plan", group: "Ads", mod: abtests },
   { id: "planner", label: "Budget planner", icon: "plan", group: "Ads", mod: planner },
   { id: "leads", label: "Leads & CRM", icon: "leads", group: "Buyers", mod: leads },
   { id: "audiences", label: "Audiences", icon: "target", group: "Buyers", mod: audiences },
@@ -79,7 +83,18 @@ const ctx = {
     ctx.treeLoading = true;
     ctx.render();
     try {
-      ctx.tree = await get("/api/tree", { range: ctx.period, fresh: force ? 1 : "" });
+      // Meta's delivery report by region, country, age and gender loads alongside;
+      // if it fails, the campaigns still show.
+      const [tree, bd] = await Promise.all([
+        get("/api/tree", { range: ctx.period, fresh: force ? 1 : "" }),
+        get("/api/breakdowns", { range: ctx.period, fresh: force ? 1 : "" }).then(
+          (v) => ({ v }),
+          (e) => ({ e }),
+        ),
+      ]);
+      ctx.tree = tree;
+      ctx.breakdowns = bd.v || null;
+      ctx.breakdownsError = bd.e ? bd.e.message : null;
       ctx.treeError = null;
       setCurrency(ctx.tree.account?.currency);
     } catch (e) {
@@ -193,7 +208,7 @@ function render() {
   }
   try {
     const keep = main.scrollTop;
-    main.onclick = main.oninput = main.onchange = main.onkeydown = main.onsubmit = null;
+    main.onclick = main.oninput = main.onchange = main.onkeydown = main.onsubmit = main.onpointermove = main.onpointerleave = main.onfocusin = main.onfocusout = null;
     main.innerHTML = v.mod.render(ctx).s;
     v.mod.mount?.(main, ctx);
     main.scrollTop = keep;
@@ -262,6 +277,7 @@ async function switchDemo(on) {
   seedDemo();
   reloadLeads();
   ctx.tree = null;
+  ctx.breakdowns = null;
   ctx.treeError = null;
   ctx.settings = null;
   render();

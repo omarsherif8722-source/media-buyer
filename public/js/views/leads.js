@@ -338,7 +338,7 @@ function exportCsv(ctx) {
 }
 
 function backup() {
-  const data = { kind: "g-media-buying-backup", version: 1, at: new Date().toISOString(), leads: allLeads(), links: load("links", []), targets: load("targets", {}), stageEvents: load("stageEvents", {}) };
+  const data = { kind: "g-media-buying-backup", version: 1, at: new Date().toISOString(), leads: allLeads(), links: load("links", []), targets: load("targets", {}), stageEvents: load("stageEvents", {}), abResults: load("abResults", []) };
   download(`g-media-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(data), "application/json");
 }
 
@@ -357,6 +357,7 @@ async function restore() {
   save("links", data.links || []);
   save("targets", data.targets || {});
   save("stageEvents", data.stageEvents || {});
+  save("abResults", data.abResults || []);
   replaceAll(data.leads);
   toast("Backup restored.", "good");
 }

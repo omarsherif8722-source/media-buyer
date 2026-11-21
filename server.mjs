@@ -393,6 +393,14 @@ async function handleApi(req, res, urlPath) {
         treeCache.set(key, { at: Date.now(), data });
         return sendJson(res, 200, data);
       }
+      case "GET /api/breakdowns": {
+        const key = `bd|${q.get("range")}|${q.get("since")}|${q.get("until")}|${q.get("campaign") || ""}`;
+        const hit = treeCache.get(key);
+        if (hit && Date.now() - hit.at < TREE_MS && q.get("fresh") !== "1") return sendJson(res, 200, { ...hit.data, cached: true });
+        const data = await meta.breakdowns(q.get("range") || "last_7d", q.get("since"), q.get("until"), q.get("campaign") || null);
+        treeCache.set(key, { at: Date.now(), data });
+        return sendJson(res, 200, data);
+      }
       case "GET /api/targeting":
         return sendJson(res, 200, await meta.targeting(q.get("id")));
       case "GET /api/search":

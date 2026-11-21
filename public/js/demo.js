@@ -222,9 +222,9 @@ function makeLead({ r, no, created, now, c, campaign, set, ad, from, city }) {
   const ageH = (now - created) / 3600000;
   const name = `${FIRST[Math.floor(r() * FIRST.length)]} ${LAST[Math.floor(r() * LAST.length)]}`;
   const isGcc = ["Riyadh", "Jeddah", "Dammam", "Dubai", "Abu Dhabi", "Kuwait City", "Doha"].includes(city);
-  const phone = isGcc
-    ? `+966 50 ${String(100 + (no % 900))} ${String(1000 + (no % 9000))}`
-    : `0100 000 ${String(1000 + (no % 9000)).padStart(4, "0")}`;
+  // Gulf leads get their own country's dialling code, so the world map can place them.
+  const dial = { Riyadh: "+966 50", Jeddah: "+966 55", Dammam: "+966 54", Dubai: "+971 50", "Abu Dhabi": "+971 52", "Kuwait City": "+965 5", Doha: "+974 3" }[city];
+  const phone = isGcc ? `${dial}${String(100 + (no % 900))} ${String(1000 + (no % 9000))}` : `0100 000 ${String(1000 + (no % 9000)).padStart(4, "0")}`;
   let stage;
   const roll = r();
   if (ageH < 0.4) stage = "new";
@@ -358,6 +358,90 @@ export function describeTargeting(t) {
 
 const eff = (own, parentOff, parentKind) => (own !== "ACTIVE" ? "PAUSED" : parentOff ? `${parentKind}_PAUSED` : "ACTIVE");
 
+// ---------------------------------------------------------------- demo delivery report (region, country, age × gender)
+// Meta-style spellings, so the dashboard's name matching is exercised in demo too.
+const META_REGION = { Cairo: "Cairo Governorate", Giza: "Giza Governorate", Qalyubia: "Al Qalyubiyah", "Al Sharqia": "Ash Sharqiyah", Dakahlia: "Ad Daqahliyah", Alexandria: "Alexandria Governorate", Gharbia: "Al Gharbiyah", Monufia: "Al Minufiyah", Ismailia: "Ismailia Governorate", Suez: "Suez Governorate", "Port Said": "Port Said Governorate", Matrouh: "Matruh", "Red Sea": "Red Sea Governorate", Beheira: "Beheira Governorate", Faiyum: "Faiyum Governorate" };
+const SPILL = ["Cairo", "Giza", "Qalyubia", "Alexandria", "Al Sharqia", "Dakahlia", "Gharbia", "Monufia"];
+const GCC_ISO = { "GCC · Saudi Arabia": "SA", "GCC · UAE": "AE", "GCC · Kuwait": "KW", "GCC · Qatar": "QA" };
+const AGE = [["18-24", 0.04, 0.75], ["25-34", 0.24, 0.9], ["35-44", 0.33, 1], ["45-54", 0.22, 1.12], ["55-64", 0.12, 1.35], ["65+", 0.05, 1.7]];
+const bucketMin = (b) => Number(b.slice(0, 2));
+const bucketMax = (b) => (b === "65+" ? 120 : Number(b.slice(3)));
+
+function demoBreakdowns(state, range, campaignId) {
+  const idx = rangeIdx(range);
+  const region = {};
+  const country = {};
+  const ag = {};
+  const put = (map, key, t, w) => {
+    const o = (map[key] ??= { spend: 0, impressions: 0, clicks: 0, leads: 0, convos: 0 });
+    o.spend += t.spend * w;
+    o.impressions += t.imps * w;
+    o.clicks += t.clicks * w;
+    o.leads += t.leads * w;
+    o.convos += t.convos * w;
+  };
+  for (const c of state.campaigns) {
+    if (campaignId && c.id !== campaignId) continue;
+    for (const s of c.sets) {
+      const t = { spend: 0, imps: 0, clicks: 0, leads: 0, convos: 0 };
+      for (const a of s.ads) {
+        const x = sumRows(a.rows, idx);
+        for (const k of Object.keys(t)) t[k] += x[k] || 0;
+      }
+      if (!t.spend) continue;
+      // Where: each targeted place gets an equal share; Egyptian ones spill a little into neighbouring governorates.
+      const dests = (s.targeting.geo_locations?.cities || []).map((x) => CITY_TO_GOV[x.name] || "Cairo");
+      const list = dests.length ? dests : ["Cairo"];
+      for (const d of list) {
+        const w = 1 / list.length;
+        if (GCC_ISO[d]) {
+          put(country, GCC_ISO[d], t, w * 0.97);
+          put(country, d === "GCC · UAE" ? "OM" : "BH", t, w * 0.03);
+        } else {
+          put(country, "EG", t, w * 0.992);
+          put(country, "SA", t, w * 0.008);
+          put(region, META_REGION[d] || `${d} Governorate`, t, w * 0.84 * 0.992);
+          const others = SPILL.filter((g) => g !== d);
+          for (const g of others) put(region, META_REGION[g] || `${g} Governorate`, t, (w * 0.16 * 0.992) / others.length);
+        }
+      }
+      // Who: ages inside the ad set's age range; leads come cheaper from some ages than others.
+      const lo = s.targeting.age_min ?? 18;
+      const hi = s.targeting.age_max ?? 65;
+      const ages = AGE.filter(([b]) => bucketMax(b) >= lo && bucketMin(b) <= (hi >= 65 ? 120 : hi));
+      const wSum = ages.reduce((n, [, w]) => n + w, 0);
+      const female = c.project === "seashell-rah" || c.project === "ivy" ? 0.45 : 0.36;
+      const cells = [];
+      for (const [b, w] of ages) {
+        cells.push([b, "male", (w / wSum) * (1 - female - 0.01), 1]);
+        cells.push([b, "female", (w / wSum) * female, 1.08]);
+        cells.push([b, "unknown", (w / wSum) * 0.01, 1]);
+      }
+      const mult = Object.fromEntries(AGE.map(([b, , m]) => [b, m]));
+      const leadW = cells.map(([b, , w, gm]) => w / (mult[b] * gm));
+      const leadSum = leadW.reduce((n, x) => n + x, 0);
+      cells.forEach(([b, g, w], i) => {
+        const o = (ag[`${b}|${g}`] ??= { age: b, gender: g, spend: 0, impressions: 0, clicks: 0, leads: 0, convos: 0 });
+        o.spend += t.spend * w;
+        o.impressions += t.imps * w;
+        o.clicks += t.clicks * w;
+        o.leads += (t.leads * leadW[i]) / leadSum;
+        o.convos += (t.convos * leadW[i]) / leadSum;
+      });
+    }
+  }
+  const round = (o) => ({ ...o, spend: Math.round(o.spend * 100) / 100, impressions: Math.round(o.impressions), reach: Math.round(o.impressions / 1.6), clicks: Math.round(o.clicks), leads: Math.round(o.leads), convos: Math.round(o.convos) });
+  return {
+    range: { preset: range },
+    campaignId: campaignId || null,
+    fetchedAt: new Date().toISOString(),
+    demo: true,
+    region: Object.entries(region).map(([k, v]) => round({ region: k, ...v })),
+    country: Object.entries(country).map(([k, v]) => round({ country: k, ...v })),
+    ageGender: Object.values(ag).map(round),
+  };
+}
+
 export function createDemo(catalog) {
   let state = build(catalog);
   const find = (id) => {
@@ -455,6 +539,8 @@ export function createDemo(catalog) {
     switch (path) {
       case "/api/settings":
         return wait(DEMO_SETTINGS, 40);
+      case "/api/breakdowns":
+        return wait(demoBreakdowns(state, params.range || "last_7d", params.campaign || null), 300);
       case "/api/tree":
         return wait(tree(params.range || "last_7d"), 160);
       case "/api/targeting": {

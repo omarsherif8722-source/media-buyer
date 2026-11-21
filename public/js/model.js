@@ -535,7 +535,7 @@ export function dailyPerformance(tree, list) {
 }
 
 // ---------------------------------------------------------------- Egypt & GCC Geo Intelligence
-export function geoBreakdown(tree, list, catalog) {
+export function geoBreakdown(tree, list, catalog, actual = null) {
   const { since, until } = treeDates(tree);
   const govs = {};
   const corridors = {};
@@ -640,6 +640,23 @@ export function geoBreakdown(tree, list, catalog) {
     }
   }
 
+  // 3. When Meta's own delivery report is loaded (spend by region and country),
+  // it replaces the estimate per governorate; the areas inside a governorate
+  // are scaled so they add up to Meta's figure.
+  if (actual) {
+    for (const name of Object.keys(actual)) ensureGov(name);
+    for (const g of Object.values(govs)) {
+      const a = actual[g.name] || { spend: 0, impressions: 0, clicks: 0, leads: 0 };
+      const est = { spend: g.spend, impressions: g.impressions, clicks: g.clicks, metaLeads: g.metaLeads };
+      const act = { spend: a.spend, impressions: a.impressions, clicks: a.clicks, metaLeads: a.leads };
+      for (const cr of Object.values(corridors)) {
+        if ((cr.gov || CITY_TO_GOV[cr.id]) !== g.name) continue;
+        for (const k of Object.keys(est)) cr[k] = est[k] > 0 ? (cr[k] * act[k]) / est[k] : 0;
+      }
+      Object.assign(g, act);
+    }
+  }
+
   const finalize = (obj) => {
     obj.spend = Math.round(obj.spend);
     obj.impressions = Math.round(obj.impressions);
@@ -657,6 +674,7 @@ export function geoBreakdown(tree, list, catalog) {
   return {
     govs,
     corridors: Object.values(corridors).sort((a, b) => b.spend - a.spend || b.valid - a.valid),
+    source: actual ? "meta" : "estimate",
   };
 }
 

@@ -9,6 +9,7 @@ import { allLeads, geoBreakdown, EGYPT_CORRIDORS, CITY_TO_GOV, isValid, treeDate
 import { CITY } from "../demo.js";
 import { kpi, connectCard, loadingCard } from "./common.js";
 import { openTargeting } from "./targeting.js";
+import { actualByPlace } from "../places.js";
 
 let egyptMap = null;
 let mapLoading = false;
@@ -332,7 +333,7 @@ export function render(ctx) {
 
   const leads = allLeads();
   const t = targets();
-  const geo = geoBreakdown(ctx.tree, leads, ctx.catalog);
+  const geo = geoBreakdown(ctx.tree, leads, ctx.catalog, actualByPlace(ctx.breakdowns));
   const { since, until } = treeDates(ctx.tree);
 
   const egyptSpend = geo.corridors.filter((c) => !c.gcc).reduce((s, c) => s + c.spend, 0);
@@ -342,6 +343,7 @@ export function render(ctx) {
   const bestCorridor = [...geo.corridors].filter((c) => c.valid >= 2 && c.cpvl).sort((a, b) => a.cpvl - b.cpvl)[0];
 
   return html`${top}
+  ${geo.source === "meta" ? html`<div class="note good" style="margin-bottom:12px"><b>Spend by governorate is Meta's own delivery report</b> for these dates. Areas inside a governorate are split by targeting.</div>` : html`<div class="note warn" style="margin-bottom:12px"><b>Spend by governorate is estimated</b> by splitting each ad set's spend across the places it targets. ${ctx.breakdownsError ? `Meta's delivery report could not be loaded: ${ctx.breakdownsError}` : "Meta's delivery report replaces it as soon as it loads."}</div>`}
   <div class="kpis kpis-5" style="margin-bottom:14px">
     ${kpi("Egypt Corridors Spend", money(egyptSpend), `${n(egyptValid)} valid buyers in Egypt`)}
     ${kpi("Egypt Cost / Valid", egyptValid ? money(egyptSpend / egyptValid) : "—", "Cairo, Giza, Alex, Delta & Coast", true)}
@@ -590,7 +592,7 @@ export function mount(root, ctx) {
     const scaleBtn = e.target.closest("[data-geo-scale]");
     if (scaleBtn) {
       e.stopPropagation();
-      const geo = geoBreakdown(ctx.tree, allLeads(), ctx.catalog);
+      const geo = geoBreakdown(ctx.tree, allLeads(), ctx.catalog, actualByPlace(ctx.breakdowns));
       return scaleCorridor(scaleBtn.dataset.geoScale, ctx, geo);
     }
     const exportBtn = e.target.closest("[data-geo-export]");

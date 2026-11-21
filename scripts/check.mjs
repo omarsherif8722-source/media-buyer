@@ -61,6 +61,14 @@ const graph = createServer(async (req, res) => {
   if (path === "/act_123/campaigns") return send(200, { data: [withNum(objects.c1), withNum(objects.c2)] });
   if (path === "/act_123/adsets") return send(200, { data: [withNum(objects.s1)] });
   if (path === "/act_123/ads") return send(200, { data: [withNum(objects.a1)] });
+  if (path === "/act_123/insights" && params.get("breakdowns")) {
+    const b = params.get("breakdowns");
+    const row = (extra, spend, leads) => ({ ...extra, spend: String(spend), impressions: "1000", reach: "800", inline_link_clicks: "10", actions: [{ action_type: "lead", value: String(leads) }] });
+    if (b === "region") return send(200, { data: [row({ region: "Cairo Governorate" }, 300, 6), row({ region: "Al Jizah" }, 100, 2), row({ region: "Riyadh Region" }, 12.5, 1)] });
+    if (b === "country") return send(200, { data: [row({ country: "EG" }, 400, 8), row({ country: "SA" }, 12.5, 1)] });
+    if (b === "age,gender") return send(200, { data: [row({ age: "35-44", gender: "male" }, 250, 5), row({ age: "35-44", gender: "female" }, 150, 3), row({ age: "25-34", gender: "unknown" }, 12.5, 1)] });
+    return send(400, { error: { message: "bad breakdown", code: 100 } });
+  }
   if (path === "/act_123/insights") {
     const level = params.get("level");
     if (!params.get("date_preset") && !params.get("time_range")) return send(400, { error: { message: "no dates", code: 100 } });
@@ -197,6 +205,16 @@ await test("campaign tree with results and budgets in EGP", async () => {
 });
 await test("second read comes from the 1-minute cache", async () => assert.equal((await api("/api/tree?range=last_7d")).data.cached, true));
 await test("custom dates are checked", async () => assert.equal((await api("/api/tree?range=custom&since=2026-11-10&until=2026-11-01")).status, 400));
+await test("delivery report by region, country, age and gender", async () => {
+  const r = await api("/api/breakdowns?range=last_7d");
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.data.region.length, 3);
+  assert.equal(r.data.country.find((x) => x.country === "SA").spend, 12.5);
+  assert.equal(r.data.ageGender.find((x) => x.gender === "male").leads, 5);
+  const one = await api(`/api/breakdowns?range=last_7d&campaign=${NUM.c1}`);
+  assert.equal(one.status, 200, one.text);
+  assert.equal((await api("/api/breakdowns?range=last_7d&campaign=abc")).status, 400);
+});
 await test("interest search", async () => assert.equal((await api("/api/search?type=interest&q=real")).data[0].name, "Real estate investing"));
 await test("custom audiences", async () => assert.equal((await api("/api/audiences")).data.length, 1));
 await test("lead-form leads with answers", async () => {
@@ -343,6 +361,33 @@ await test("targeting editor sends only what changed", async () => {
   assert.deepEqual(patch.geo_locations.location_types, ["home"]);
 });
 
+console.log("Who & where, A/B tests");
+const places = await import(join(root, "public", "js", "places.js"));
+await test("Meta governorate spellings land on the map", async () => {
+  for (const [meta, map] of [["Cairo Governorate", "Cairo"], ["Al Qahirah", "Cairo"], ["Al Jizah", "Giza"], ["Ash Sharqiyah", "Al Sharqia"], ["Ad Daqahliyah", "Dakahlia"], ["Kafr ash Shaykh", "Kafr el-Sheikh"], ["Bur Sa'id", "Port Said"], ["Al Minufiyah", "Monufia"], ["Matruh", "Matrouh"], ["Janub Sina'", "South Sinai"], ["Al Bahr al Ahmar", "Red Sea"], ["Al Wadi al Jadid", "New Valley"], ["Bani Suwayf", "Beni Suef"], ["Riyadh Region", null]]) {
+    assert.equal(places.govName(meta), map, meta);
+  }
+  const eg = JSON.parse(readFileSync(join(root, "public", "data", "egypt-map.json"), "utf8"));
+  for (const name of Object.keys(eg.egypt.paths)) assert.equal(places.govName(name), name, `map name ${name}`);
+});
+await test("phone numbers give the lead's country", async () => {
+  assert.deepEqual(["01001234567", "+20 100 123 4567", "+966 50 123 4567", "00971501234567", "+965 5123 4567", "+974 3312 3456", "+44 7700 900123", "12345", ""].map(places.phoneCountry), ["EG", "EG", "SA", "AE", "KW", "QA", "GB", null, null]);
+});
+const ab = await import(join(root, "public", "js", "views", "abtests.js"));
+await test("A/B verdict: clear winner, too early, and a tie", async () => {
+  const v1 = ab.verdict([{ id: "a", name: "A", spend: 10000, valid: 30 }, { id: "b", name: "B", spend: 10000, valid: 10 }], "valid");
+  assert.equal(v1.kind, "winner");
+  assert.equal(v1.lead.id, "a");
+  assert.ok(v1.conf > 0.99);
+  const v2 = ab.verdict([{ id: "a", name: "A", spend: 1000, valid: 3 }, { id: "b", name: "B", spend: 1000, valid: 2 }], "valid");
+  assert.equal(v2.kind, "early");
+  assert.ok(v2.moreSpend > 0);
+  const v3 = ab.verdict([{ id: "a", name: "A", spend: 10000, valid: 21 }, { id: "b", name: "B", spend: 10000, valid: 19 }], "valid");
+  assert.equal(v3.kind, "tie");
+  assert.ok(Math.abs(ab.binomTwoSided(5, 10, 0.5) - 1) < 1e-9);
+  assert.ok(ab.binomTwoSided(10, 10, 0.5) < 0.01);
+});
+
 console.log("Demo mode");
 const { createDemo } = await import(join(root, "public", "js", "demo.js"));
 const demo = createDemo(catalog);
@@ -389,6 +434,18 @@ await test("demo switches, budgets and targeting change only the demo", async ()
   assert.equal((await demo.get("/api/audit")).length, 3);
   demo.reset();
   assert.equal((await demo.get("/api/tree", { range: "last_7d" })).campaigns[0].status, "ACTIVE");
+});
+await test("demo delivery report adds up to the demo campaigns", async () => {
+  const t = await demo.get("/api/tree", { range: "last_30d" });
+  const bd = await demo.get("/api/breakdowns", { range: "last_30d" });
+  const total = t.campaigns.reduce((s, c) => s + (c.m?.spend || 0), 0);
+  const sum = (rows) => rows.reduce((s, r) => s + r.spend, 0);
+  assert.ok(Math.abs(sum(bd.country) - total) < 2, `country ${sum(bd.country)} vs ${total}`);
+  assert.ok(Math.abs(sum(bd.ageGender) - total) < 2, `age ${sum(bd.ageGender)} vs ${total}`);
+  for (const r of bd.region) assert.ok(places.govName(r.region), `demo region ${r.region} matches the map`);
+  const reach = await import(join(root, "public", "js", "views", "reach.js"));
+  const tips = reach._test.findings(reach._test.audience(bd), reach._test.countries(bd, demo.leads()), reach._test.governorates(bd));
+  assert.ok(tips.length >= 3, "findings appear");
 });
 await test("demo 'get new leads' brings Meta-shaped leads", async () => {
   const r = await demo.get("/api/leads", { since: 0 });
