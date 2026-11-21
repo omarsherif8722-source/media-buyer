@@ -289,8 +289,14 @@ function makeLead({ r, no, created, now, c, campaign, set, ad, from, city }) {
 }
 
 // ---------------------------------------------------------------- reading the demo account like the API does
-function rangeIdx(range) {
+function rangeIdx(range, since, until) {
   const today = DAYS - 1;
+  if (range === "custom" && /^\d{4}-\d{2}-\d{2}$/.test(since || "") && /^\d{4}-\d{2}-\d{2}$/.test(until || "")) {
+    // Exact dates (the weekly report compares two specific weeks).
+    const base = dayIso(today).getTime();
+    const at = (d) => today - Math.round((base - new Date(`${d}T00:00:00`).getTime()) / 86400000);
+    return [Math.max(0, Math.min(today, at(since))), Math.max(0, Math.min(today, at(until)))];
+  }
   if (range === "today") return [today, today];
   if (range === "yesterday") return [today - 1, today - 1];
   if (range === "last_7d") return [today - 7, today - 1];
@@ -367,8 +373,8 @@ const AGE = [["18-24", 0.04, 0.75], ["25-34", 0.24, 0.9], ["35-44", 0.33, 1], ["
 const bucketMin = (b) => Number(b.slice(0, 2));
 const bucketMax = (b) => (b === "65+" ? 120 : Number(b.slice(3)));
 
-function demoBreakdowns(state, range, campaignId) {
-  const idx = rangeIdx(range);
+function demoBreakdowns(state, range, campaignId, since, until) {
+  const idx = rangeIdx(range, since, until);
   const region = {};
   const country = {};
   const ag = {};
@@ -432,7 +438,7 @@ function demoBreakdowns(state, range, campaignId) {
   }
   const round = (o) => ({ ...o, spend: Math.round(o.spend * 100) / 100, impressions: Math.round(o.impressions), reach: Math.round(o.impressions / 1.6), clicks: Math.round(o.clicks), leads: Math.round(o.leads), convos: Math.round(o.convos) });
   return {
-    range: { preset: range },
+    range: { preset: range, ...(range === "custom" ? { since, until } : {}) },
     campaignId: campaignId || null,
     fetchedAt: new Date().toISOString(),
     demo: true,
@@ -493,8 +499,8 @@ export function createDemo(catalog) {
     return out;
   }
 
-  function tree(range) {
-    const idx = rangeIdx(range);
+  function tree(range, since, until) {
+    const idx = rangeIdx(range, since, until);
     const life = dailySeries([0, DAYS - 1]);
     const lifetimeSpend = Math.round(life.reduce((s, d) => s + (d.spend || 0), 0));
     const activeDailyBudget = state.campaigns
@@ -540,9 +546,9 @@ export function createDemo(catalog) {
       case "/api/settings":
         return wait(DEMO_SETTINGS, 40);
       case "/api/breakdowns":
-        return wait(demoBreakdowns(state, params.range || "last_7d", params.campaign || null), 300);
+        return wait(demoBreakdowns(state, params.range || "last_7d", params.campaign || null, params.since, params.until), 300);
       case "/api/tree":
-        return wait(tree(params.range || "last_7d"), 160);
+        return wait(tree(params.range || "last_7d", params.since, params.until), 160);
       case "/api/targeting": {
         const f = find(params.id);
         if (!f) return fail("Not found in the demo account.");

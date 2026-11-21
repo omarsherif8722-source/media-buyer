@@ -429,3 +429,45 @@ tr.row-selected td { background: color-mix(in srgb, var(--accent-soft) 50%, var(
 .abbar i { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--faint) 45%, transparent); border-radius: 0 4px 4px 0; }
 .abbar i.lead { background: color-mix(in srgb, var(--good) 55%, transparent); }
 .abbar span { position: relative; padding: 0 8px; font-size: 12.5px; line-height: 22px; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* ---------- Weekly client report ---------- */
+.report-sheet { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: clamp(16px, 3vw, 32px); max-width: 920px; margin: 14px auto 0; }
+.r-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 2px solid var(--accent); }
+.r-head h2 { font-size: 22px; margin-top: 8px; }
+.r-head p { color: var(--muted); margin-top: 2px; }
+.r-brand { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.r-brand .brand-mark { width: 28px; height: 28px; font-size: 16px; border-radius: 7px; }
+.r-meta { text-align: right; font-size: 12.5px; display: grid; gap: 4px; align-content: start; }
+.r-demo { color: var(--bad); font-weight: 750; border: 2px solid var(--bad); padding: 2px 8px; border-radius: 6px; justify-self: end; letter-spacing: 0.04em; }
+.rstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 18px 0 4px; }
+.rstat { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 1px; }
+.rstat span { font-size: 12px; color: var(--muted); }
+.rstat b { font-size: 19px; font-weight: 680; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.rstat small { font-size: 11.5px; font-weight: 600; }
+.rstat small.good { color: var(--good); } .rstat small.bad { color: var(--bad); }
+.report-sheet section { margin-top: 20px; }
+.report-sheet h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 8px; }
+.rtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rtable th, .rtable td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+.rtable th { font-size: 11.5px; color: var(--muted); font-weight: 600; background: transparent; position: static; }
+.rtable .n { text-align: right; font-variant-numeric: tabular-nums; }
+.r2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.r-edit { margin-top: 6px; font-size: 13px; }
+.r-print-text { display: none; white-space: pre-wrap; font-size: 13px; }
+.r-foot { margin-top: 22px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
+@media (max-width: 860px) { .rstats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .r2 { grid-template-columns: 1fr; } .r-meta { text-align: left; } .r-demo { justify-self: start; } }
+@media print {
+  @page { size: A4; margin: 12mm; }
+  :root:root:root { --bg: #fff; --bg-2: #f4f2ef; --card: #fff; --line: #dcd6cf; --line-2: #cfc8c0; --text: #151314; --muted: #5d5650; --faint: #7d756f; --accent: #b3301f; --good: #146c3c; --bad: #b42318; color-scheme: light; }
+  html, body { background: #fff !important; }
+  .side, .appbar, .tabbar, .more-sheet, .demo-banner, .noprint, .toasts, .viztip { display: none !important; }
+  .shell { display: block !important; }
+  .content, .main { padding: 0 !important; display: block !important; }
+  .report-sheet { border: 0; border-radius: 0; padding: 0; margin: 0; max-width: none; }
+  .r-edit { display: none !important; }
+  .r-print-text { display: block; }
+  .rstats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .r2 { grid-template-columns: 1fr 1fr; }
+  .report-sheet section, .rstat, .rtable tr { break-inside: avoid; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

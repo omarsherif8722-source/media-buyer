@@ -9,6 +9,7 @@ import * as overview from "./views/overview.js";
 import * as geo from "./views/geo.js";
 import * as reach from "./views/reach.js";
 import * as abtests from "./views/abtests.js";
+import * as report from "./views/report.js";
 import * as website from "./views/website.js";
 import * as campaigns from "./views/campaigns.js";
 import * as planner from "./views/planner.js";
@@ -43,6 +44,7 @@ const VIEWS = [
   { id: "campaigns", label: "Campaigns", icon: "ads", group: "Ads", mod: campaigns },
   { id: "abtests", label: "A/B tests", icon: "plan", group: "Ads", mod: abtests },
   { id: "planner", label: "Budget planner", icon: "plan", group: "Ads", mod: planner },
+  { id: "report", label: "Weekly report", icon: "book", group: "Ads", mod: report },
   { id: "leads", label: "Leads & CRM", icon: "leads", group: "Buyers", mod: leads },
   { id: "audiences", label: "Audiences", icon: "target", group: "Buyers", mod: audiences },
   { id: "messages", label: "Messages & Copy", icon: "msg", group: "Content", mod: messages },

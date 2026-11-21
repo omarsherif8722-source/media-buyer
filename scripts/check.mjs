@@ -388,6 +388,16 @@ await test("A/B verdict: clear winner, too early, and a tie", async () => {
   assert.ok(ab.binomTwoSided(10, 10, 0.5) < 0.01);
 });
 
+const rep = await import(join(root, "public", "js", "views", "report.js"));
+await test("weekly report: week-on-week arrows point the right way", async () => {
+  assert.deepEqual(rep._test.delta(120, 100), { text: "▲ 20%", tone: "good" });
+  assert.deepEqual(rep._test.delta(80, 100, true), { text: "▼ 20%", tone: "good" });
+  assert.deepEqual(rep._test.delta(120, 100, true), { text: "▲ 20%", tone: "bad" });
+  assert.equal(rep._test.delta(120, 100, false, true).tone, "");
+  assert.equal(rep._test.delta(5, 0).text, "new");
+  assert.equal(rep._test.addDays("2026-11-01", -7), "2026-10-25");
+});
+
 console.log("Demo mode");
 const { createDemo } = await import(join(root, "public", "js", "demo.js"));
 const demo = createDemo(catalog);
@@ -446,6 +456,18 @@ await test("demo delivery report adds up to the demo campaigns", async () => {
   const reach = await import(join(root, "public", "js", "views", "reach.js"));
   const tips = reach._test.findings(reach._test.audience(bd), reach._test.countries(bd, demo.leads()), reach._test.governorates(bd));
   assert.ok(tips.length >= 3, "findings appear");
+});
+await test("demo answers exact weeks for the report", async () => {
+  const until = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d; })();
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const since = new Date(until); since.setDate(since.getDate() - 6);
+  const wk = await demo.get("/api/tree", { range: "custom", since: ymd(since), until: ymd(until) });
+  const l7 = await demo.get("/api/tree", { range: "last_7d" });
+  const sp = (t) => Math.round(t.campaigns.reduce((s, c) => s + (c.m?.spend || 0), 0));
+  assert.equal(sp(wk), sp(l7), "the last full week equals Meta's last 7 days");
+  const text = rep._test.whatsappText({ since: ymd(since), until: ymd(until) }, rep._test.totals(wk, demo.leads(), ymd(since), ymd(until)), rep._test.totals(l7, demo.leads(), ymd(since), ymd(until)), [], { best: [], waste: [] }, "- Do this", "Omar");
+  assert.match(text, /Weekly media report/);
+  assert.match(text, /Next week:\n• Do this/);
 });
 await test("demo 'get new leads' brings Meta-shaped leads", async () => {
   const r = await demo.get("/api/leads", { since: 0 });
