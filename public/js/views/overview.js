@@ -52,7 +52,11 @@ export function render(ctx) {
   const tt = totals(tree);
   const sc = score({ spend: tt.spend, leads: tt.leads, convos: tt.convos }, q.total);
   const list = alerts(tree, leads);
-  const waiting = leads.filter((l) => isWaiting(l.stage)).sort((a, b) => String(a.created).localeCompare(String(b.created)));
+  // Brand-new leads first (oldest first), then unanswered ones; only the last 14 days.
+  const recent = Date.now() - 14 * 86400000;
+  const waiting = leads
+    .filter((l) => isWaiting(l.stage) && new Date(l.created).getTime() >= recent)
+    .sort((a, b) => (a.stage === "new" ? 0 : 1) - (b.stage === "new" ? 0 : 1) || String(a.created).localeCompare(String(b.created)));
   const rank = tree ? ranking(tree, q) : null;
   const t = targets();
 
@@ -79,7 +83,7 @@ export function render(ctx) {
     <div class="card"><div class="card-head"><div><h2>Needs attention</h2><p>From Meta results, your lead stages and the targets below.</p></div></div>
       ${list.length ? html`<div class="alerts">${list.slice(0, 12).map((a) => html`<div class="alert ${a.tone}"><span class="dot"></span><div class="grow"><b>${a.title}</b>${a.name ? html` <span class="muted small">· ${a.name}</span>` : ""}<p>${a.text}</p></div>${a.lead ? html`<a class="btn sm" href="#/leads">Open leads</a>` : a.campaignId ? html`<a class="btn sm" href="#/campaigns/${a.campaignId}">Open</a>` : ""}</div>`)}</div>` : html`<div class="empty"><h3>Nothing urgent</h3><p>${tree ? "No rule is triggered for these dates." : "Alerts start once Meta is connected and leads come in."}</p></div>`}
     </div>
-    <div class="card"><div class="card-head"><div><h2>Call these first</h2><p>New and unanswered leads, oldest first.</p></div><a class="btn sm" href="#/leads">All leads</a></div>
+    <div class="card"><div class="card-head"><div><h2>Call these first</h2><p>New leads first, then unanswered ones (last 14 days).</p></div><a class="btn sm" href="#/leads">All leads</a></div>
       ${waiting.length ? html`<div class="table-wrap"><table><tbody>${waiting.slice(0, 8).map((l) => html`<tr><td><div class="name">${l.name || l.phone || "No name"}</div><div class="tiny muted">${l.campaignName || l.source || ""}</div></td><td class="n ${l.stage === "new" && Date.now() - new Date(l.created) > t.speedToLead * 60000 ? "late" : ""}">${ago(l.created)}</td></tr>`)}</tbody></table></div>` : html`<div class="empty"><h3>No one waiting</h3><p>Every lead has been contacted.</p></div>`}
     </div>
   </div>

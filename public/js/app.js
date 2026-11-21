@@ -1,9 +1,10 @@
 // App shell: sidebar and phone tab bar, routing, the date range, and loading
 // data from the server (settings + Meta campaigns) and the website catalog.
 import { html, raw, $, toast, setCurrency } from "./ui.js";
-import { get } from "./api.js";
-import { load, save } from "./store.js";
-import { allLeads, onLeads } from "./model.js";
+import { get, setDemoBackend } from "./api.js";
+import { load, save, loadGlobal, saveGlobal, isDemo, setDemo, clearDemo } from "./store.js";
+import { allLeads, onLeads, reloadLeads, replaceAll } from "./model.js";
+import { createDemo, DEMO_TARGETS } from "./demo.js";
 import * as overview from "./views/overview.js";
 import * as campaigns from "./views/campaigns.js";
 import * as planner from "./views/planner.js";
@@ -109,7 +110,7 @@ function shell() {
     if (!groups.length || groups[groups.length - 1].name !== g) groups.push({ name: g, items: [] });
     groups[groups.length - 1].items.push(v);
   }
-  const theme = load("theme", "system");
+  const theme = loadGlobal("theme", "system");
   return html`
   <div class="shell">
     <nav class="side" aria-label="Sections">
@@ -124,7 +125,15 @@ function shell() {
         <div class="row"><button class="btn sm ghost" type="button" data-theme-toggle>Theme: ${theme}</button><a class="btn sm ghost" href="/logout">Sign out</a></div>
       </div>
     </nav>
-    <main class="main" id="main" tabindex="-1"></main>
+    <div class="content">
+      <header class="appbar">
+        <div class="appbar-brand"><div class="brand-mark" aria-hidden="true">G</div><b>Media buying</b></div>
+        <div class="appbar-status small" data-appbar-status></div>
+        <div class="demo-switch"><span id="demo-label">Demo</span><button type="button" class="switch" role="switch" aria-checked="false" aria-labelledby="demo-label" data-demo-toggle title="Show made-up campaigns and leads"></button></div>
+      </header>
+      <div class="demo-banner" data-demo-banner hidden><div><b>Demo data.</b> Made-up campaigns and leads that show how the dashboard tracks results. Nothing here is real. Switches, budgets and targeting change only this demo, never Meta.</div><button class="btn sm" type="button" data-demo-reset>Reset demo</button></div>
+      <main class="main" id="main" tabindex="-1"></main>
+    </div>
     <nav class="tabbar" aria-label="Sections">
       ${PHONE_TABS.map((id) => VIEWS.find((v) => v.id === id)).map((v) => html`<a href="#/${v.id}" data-nav="${v.id}">${icon(v.icon)}<span>${v.label}</span></a>`)}
       <button type="button" data-more>${icon("more")}<span>More</span></button>
@@ -148,12 +157,22 @@ function render() {
     badge.hidden = !w;
     badge.textContent = w;
   }
+  const demo = isDemo();
+  const sw = $("[data-demo-toggle]");
+  if (sw) sw.setAttribute("aria-checked", String(demo));
+  const banner = $("[data-demo-banner]");
+  if (banner) banner.hidden = !demo;
+  document.documentElement.classList.toggle("is-demo", demo);
+  const status = $("[data-appbar-status]");
+  if (status) status.innerHTML = demo ? html`<span class="pill warn">Demo account · made-up data</span>`.s : ctx.settings?.connected ? html`<span class="pill good">Meta connected</span> <span class="muted">${ctx.tree?.account?.name || ""}</span>`.s : ctx.settings ? html`<span class="pill line">Meta not connected</span>`.s : "";
   const conn = $("[data-conn]");
   if (conn) {
     const s = ctx.settings;
     conn.innerHTML = !s
       ? ""
-      : s.connected
+      : demo
+        ? html`<span class="pill warn">Demo data</span>`.s
+        : s.connected
         ? html`<span class="pill good">Meta connected</span> ${s.readOnly ? html`<span class="pill warn">Read-only</span>` : ""}<div class="tiny faint" style="margin-top:4px">${ctx.tree?.account?.name || s.account}</div>`.s
         : html`<span class="pill warn">Meta not connected</span>`.s;
   }
@@ -174,13 +193,20 @@ function bindShell() {
     const p = e.target.closest("[data-period]");
     if (p) return ctx.setPeriod(p.dataset.period);
     if (e.target.closest("[data-refresh]")) return ctx.loadTree(true);
+    if (e.target.closest("[data-demo-toggle]")) return switchDemo(!isDemo());
+    if (e.target.closest("[data-demo-reset]")) {
+      seedDemo(true);
+      ctx.tree = null;
+      ctx.loadTree();
+      return toast("Demo reset.", "good");
+    }
     if (e.target.closest("[data-more]")) return $("[data-sheet]").classList.toggle("open");
     if (e.target.closest("[data-sheet] a")) $("[data-sheet]").classList.remove("open");
     const t = e.target.closest("[data-theme-toggle]");
     if (t) {
       const order = ["system", "light", "dark"];
-      const next = order[(order.indexOf(load("theme", "system")) + 1) % 3];
-      save("theme", next);
+      const next = order[(order.indexOf(loadGlobal("theme", "system")) + 1) % 3];
+      saveGlobal("theme", next);
       applyTheme();
       t.textContent = `Theme: ${next}`;
     }
@@ -195,9 +221,43 @@ function bindShell() {
 }
 
 function applyTheme() {
-  const t = load("theme", "system");
+  const t = loadGlobal("theme", "system");
   if (t === "system") document.documentElement.removeAttribute("data-theme");
   else document.documentElement.dataset.theme = t;
+}
+
+// ---------------------------------------------------------------- demo mode
+let demoBackend = null;
+/** Fills the demo with made-up leads (first time, or on "Reset demo"). */
+function seedDemo(force = false) {
+  if (!demoBackend || !isDemo()) return;
+  if (force) {
+    clearDemo();
+    demoBackend.reset();
+  }
+  if (force || !load("seeded", false)) {
+    save("targets", DEMO_TARGETS);
+    save("seeded", true);
+    replaceAll(demoBackend.leads());
+  }
+}
+async function switchDemo(on) {
+  setDemo(on);
+  ctx.period = load("period", "last_7d");
+  seedDemo();
+  reloadLeads();
+  ctx.tree = null;
+  ctx.treeError = null;
+  ctx.settings = null;
+  render();
+  try {
+    ctx.settings = await get("/api/settings");
+  } catch {
+    ctx.settings = { connected: false };
+  }
+  render();
+  toast(on ? "Demo on: made-up data, nothing reaches Meta." : "Demo off: your real data.", on ? "" : "good");
+  if (ctx.settings.connected) ctx.loadTree();
 }
 
 async function start() {
@@ -208,7 +268,12 @@ async function start() {
   render();
   const [catalog, settings] = await Promise.allSettled([fetch("/data/catalog.json", { credentials: "same-origin" }).then((r) => r.json()), get("/api/settings")]);
   ctx.catalog = catalog.status === "fulfilled" ? catalog.value : { projects: [], regions: [], site: {} };
-  ctx.settings = settings.status === "fulfilled" ? settings.value : { connected: false };
+  demoBackend = createDemo(ctx.catalog);
+  setDemoBackend(demoBackend);
+  if (isDemo()) {
+    seedDemo();
+    ctx.settings = await get("/api/settings");
+  } else ctx.settings = settings.status === "fulfilled" ? settings.value : { connected: false };
   render();
   if (ctx.settings.connected) ctx.loadTree();
 }

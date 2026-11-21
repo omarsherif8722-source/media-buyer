@@ -92,6 +92,11 @@ export function removeLead(id) {
   leads = leads.filter((l) => l.id !== id);
   commit();
 }
+/** Reads the lead list again (after switching between demo and real). */
+export function reloadLeads() {
+  leads = load("leads", []);
+  listeners.forEach((fn) => fn());
+}
 export function replaceAll(list) {
   leads = Array.isArray(list) ? list : [];
   commit();

@@ -21,6 +21,14 @@ It merges two earlier projects:
 | What to sell | Availability and prices per project, so money goes where there are homes to sell. |
 | Playbook | The daily and weekly routine and the rules for turning things off and up. |
 
+### Demo mode
+
+The **Demo** switch at the top of every screen fills the dashboard with a made-up ad account (six G Developments campaigns over 45 days) and about two thousand made-up leads with stages, so you can show how it tracks results before the real account is connected.
+
+- A banner on every screen says the data is made up.
+- In demo mode every call is answered in the browser (`public/js/demo.js`): nothing reaches the server or Meta. Switches, budgets and targeting edits change only the demo.
+- Demo leads and settings are stored apart from real ones and never mix. **Reset demo** starts it fresh; switching Demo off brings back your real data exactly as it was.
+
 ### Valid leads
 
 A lead counts as **valid** at the stage "Real interest" or any later stage (meeting, visit, reserved, sold, or interested-then-lost). "No answer", wrong numbers, brokers, job seekers, low budgets and "just looking" are not valid. Cost per valid lead = spend ÷ valid leads for the same dates.
@@ -104,6 +112,7 @@ Open the link in Safari (iPhone: Share → Add to Home Screen) or Chrome (Androi
 | `lib/meta.mjs` | Meta Marketing API: reads, guarded writes, lead forms, lead stages to Meta, change log. |
 | `public/js/app.js` | Shell, routing, dates, loading data. |
 | `public/js/model.js` | Lead stages, valid leads, lead quality per campaign / ad set / ad, alert rules. |
+| `public/js/demo.js` | Demo mode: the made-up account and leads, answered in the browser. |
 | `public/js/playbook.js` | Audiences and messages per project (filled with live prices). |
 | `public/js/views/` | One file per screen, plus the targeting editor. |
 | `public/data/catalog.json` | Projects, prices, plans and availability from the website. |

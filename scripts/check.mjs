@@ -335,6 +335,60 @@ await test("targeting editor sends only what changed", async () => {
   assert.deepEqual(patch.geo_locations.location_types, ["home"]);
 });
 
+console.log("Demo mode");
+const { createDemo } = await import(join(root, "public", "js", "demo.js"));
+const demo = createDemo(catalog);
+await test("demo tree for every date range adds up", async () => {
+  for (const range of ["today", "yesterday", "last_7d", "last_30d", "this_month", "maximum"]) {
+    const t = await demo.get("/api/tree", { range });
+    assert.equal(t.demo, true);
+    assert.match(t.account.name, /Demo/);
+    for (const c of t.campaigns) {
+      const sets = c.adsets.reduce((n, s) => n + (s.m?.spend || 0), 0);
+      if (c.m) assert.ok(Math.abs(c.m.spend - sets) < 1, `${range} ${c.name} spend ${c.m.spend} vs ${sets}`);
+      for (const s of c.adsets) {
+        const ads = s.ads.reduce((n, a) => n + (a.m?.leads || 0) + (a.m?.convos || 0), 0);
+        assert.equal((s.m?.leads || 0) + (s.m?.convos || 0), ads, `${range} ${s.name} leads`);
+      }
+    }
+  }
+});
+await test("demo lead log matches the demo's Meta lead counts", async () => {
+  const t = await demo.get("/api/tree", { range: "last_30d" });
+  const { since, until } = model.treeDates(t);
+  const metaLeads = t.campaigns.reduce((n, c) => n + (c.m?.leads || 0) + (c.m?.convos || 0), 0);
+  const ymd = (iso) => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const logged = demo.leads().filter((l) => ymd(l.created) >= since && ymd(l.created) <= until).length;
+  assert.ok(metaLeads > 100, `only ${metaLeads} demo leads`);
+  assert.ok(Math.abs(logged - metaLeads) <= Math.max(3, metaLeads * 0.02), `logged ${logged} vs Meta ${metaLeads}`);
+  const q = model.quality(demo.leads(), since, until);
+  assert.ok(q.total.valid > 10 && q.total.valid < q.total.leads, "valid leads should be some, not all");
+  assert.ok(q.total.reserved > 0, "some reservations");
+});
+await test("demo switches, budgets and targeting change only the demo", async () => {
+  const t = await demo.get("/api/tree", { range: "last_7d" });
+  const c = t.campaigns[0];
+  const s = c.adsets[0];
+  await demo.post("/api/status", { id: c.id, status: "PAUSED" });
+  let t2 = await demo.get("/api/tree", { range: "last_7d" });
+  assert.equal(t2.campaigns[0].status, "PAUSED");
+  assert.equal(t2.campaigns[0].adsets[0].effectiveStatus, "CAMPAIGN_PAUSED");
+  await demo.post("/api/budget", { id: s.id, field: "daily_budget", amount: 950 });
+  await demo.post("/api/targeting", { id: s.id, patch: { age_min: 33 } });
+  t2 = await demo.get("/api/tree", { range: "last_7d" });
+  assert.equal(t2.campaigns[0].adsets[0].dailyBudget, 950);
+  assert.equal(t2.campaigns[0].adsets[0].targeting.ageMin, 33);
+  assert.equal((await demo.get("/api/audit")).length, 3);
+  demo.reset();
+  assert.equal((await demo.get("/api/tree", { range: "last_7d" })).campaigns[0].status, "ACTIVE");
+});
+await test("demo 'get new leads' brings Meta-shaped leads", async () => {
+  const r = await demo.get("/api/leads", { since: 0 });
+  assert.ok(r.leads.length >= 1);
+  assert.ok(model.mergeMetaLeads.length >= 1);
+  assert.match(r.leads[0].metaId, /^\d{16}$/);
+});
+
 for (const s of [main, ro, bare, nopass]) s.child.kill();
 graph.close();
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll checks passed.");

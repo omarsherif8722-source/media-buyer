@@ -88,6 +88,16 @@ p { margin: 0; }
 .side-foot { margin-top: auto; display: grid; gap: 6px; padding: 10px 8px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
 .side-foot .row { display: flex; gap: 6px; flex-wrap: wrap; }
 
+.content { min-width: 0; display: flex; flex-direction: column; }
+.appbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; padding: 8px clamp(16px, 3vw, 32px); min-height: 52px; background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.appbar-brand { display: none; align-items: center; gap: 8px; font-size: 14px; }
+.appbar-brand .brand-mark { width: 28px; height: 28px; font-size: 16px; border-radius: 7px; }
+.appbar-status { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.demo-switch { display: inline-flex; align-items: center; gap: 8px; padding: 4px 6px 4px 12px; border: 1px solid var(--line-2); border-radius: 99px; background: var(--card); font-size: 13px; font-weight: 600; }
+.is-demo .demo-switch { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+.is-demo .demo-switch .switch[aria-checked="true"] { background: var(--warn); }
+.demo-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 14px clamp(16px, 3vw, 32px) 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line)); border-left: 3px solid var(--warn); border-radius: 10px; background: color-mix(in srgb, var(--warn-soft) 60%, var(--card)); font-size: 13px; }
+.demo-banner[hidden] { display: none; }
 .main { min-width: 0; padding: 22px clamp(16px, 3vw, 32px) 80px; }
 .top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
 .top .sub { color: var(--muted); margin-top: 4px; max-width: 70ch; }
@@ -294,6 +304,11 @@ dialog::backdrop { background: rgba(10, 6, 5, 0.45); }
   .shell { grid-template-columns: 1fr; }
   .side { display: none; }
   .main { padding: 16px 16px calc(86px + env(safe-area-inset-bottom)); }
+  .appbar { padding: calc(8px + env(safe-area-inset-top)) 16px 8px; }
+  .appbar-brand { display: flex; }
+  .appbar-status { display: none; }
+  .demo-switch { margin-left: auto; }
+  .demo-banner { margin: 12px 16px 0; }
   .g2, .g3 { grid-template-columns: 1fr; }
   .funnel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
