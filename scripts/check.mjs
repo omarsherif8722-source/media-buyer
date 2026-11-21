@@ -215,6 +215,15 @@ await test("delivery report by region, country, age and gender", async () => {
   assert.equal(one.status, 200, one.text);
   assert.equal((await api("/api/breakdowns?range=last_7d&campaign=abc")).status, 400);
 });
+await test("day-by-day results per ad, and daily totals on the campaign tree", async () => {
+  const r = await api("/api/daily?range=last_14d");
+  assert.equal(r.status, 200, r.text);
+  assert.ok(r.data.rows.length >= 1);
+  assert.equal(r.data.rows[0].adId, NUM.a1);
+  assert.equal(r.data.rows[0].date, "2026-11-14");
+  const t = await api("/api/tree?range=last_14d");
+  assert.ok(Array.isArray(t.data.daily), "tree carries real daily totals");
+});
 await test("interest search", async () => assert.equal((await api("/api/search?type=interest&q=real")).data[0].name, "Real estate investing"));
 await test("custom audiences", async () => assert.equal((await api("/api/audiences")).data.length, 1));
 await test("lead-form leads with answers", async () => {
@@ -398,6 +407,18 @@ await test("weekly report: week-on-week arrows point the right way", async () =>
   assert.equal(rep._test.addDays("2026-11-01", -7), "2026-10-25");
 });
 
+const tr = await import(join(root, "public", "js", "views", "trends.js"));
+await test("ad fatigue: falling CTR with high frequency is tired, steady is fresh", async () => {
+  const day = (i, clicks) => ({ date: `2026-11-${String(i + 1).padStart(2, "0")}`, adId: "x", adName: "x", campaignId: "c", adsetId: "s", spend: 100, impressions: 1000, clicks, leads: 2, convos: 0 });
+  const tiredRows = Array.from({ length: 14 }, (_, i) => day(i, i < 7 ? 12 : 7));
+  const freshRows = Array.from({ length: 14 }, (_, i) => ({ ...day(i, 10), adId: "y", adName: "y" }));
+  const out = tr.fatigue([...tiredRows, ...freshRows], (id) => (id === "x" ? 3.5 : 2), 4);
+  assert.equal(out.find((f) => f.adId === "x").state, "tired");
+  assert.equal(out.find((f) => f.adId === "y").state, "fresh");
+  const little = tr.fatigue([day(0, 10), day(1, 10)], () => 1, 4);
+  assert.equal(little[0].state, "little");
+});
+
 console.log("Demo mode");
 const { createDemo } = await import(join(root, "public", "js", "demo.js"));
 const demo = createDemo(catalog);
@@ -468,6 +489,18 @@ await test("demo answers exact weeks for the report", async () => {
   const text = rep._test.whatsappText({ since: ymd(since), until: ymd(until) }, rep._test.totals(wk, demo.leads(), ymd(since), ymd(until)), rep._test.totals(l7, demo.leads(), ymd(since), ymd(until)), [], { best: [], waste: [] }, "- Do this", "Omar");
   assert.match(text, /Weekly media report/);
   assert.match(text, /Next week:\n• Do this/);
+});
+await test("demo daily rows add up and some demo ads wear out", async () => {
+  const t = await demo.get("/api/tree", { range: "last_14d" });
+  const d = await demo.get("/api/daily", { range: "last_14d" });
+  const total = t.campaigns.reduce((s, c) => s + (c.m?.spend || 0), 0);
+  const sum = d.rows.reduce((s, r) => s + r.spend, 0);
+  assert.ok(Math.abs(sum - total) < 5, `daily ${sum} vs tree ${total}`);
+  const freq = {};
+  for (const c of t.campaigns) for (const s of c.adsets) for (const a of s.ads) freq[a.id] = a.m?.frequency || 0;
+  const f = tr.fatigue(d.rows, (id) => freq[id], tr.FREQ_WATCH.last_14d);
+  assert.ok(f.some((x) => x.state === "tired"), "at least one tired ad in demo");
+  assert.ok(f.some((x) => x.state === "fresh"), "and some fresh ones");
 });
 await test("demo 'get new leads' brings Meta-shaped leads", async () => {
   const r = await demo.get("/api/leads", { since: 0 });

@@ -192,7 +192,7 @@ function build(catalog) {
           const pace = (weekday === 5 ? 1.08 : weekday === 4 ? 1.04 : 1) * (0.86 + r() * 0.2);
           const spend = sp.budget * share * pace * frac;
           const imps = (spend / sp.cpm) * 1000 * (0.92 + r() * 0.16);
-          const clicks = imps * (sp.ctr / 100) * ctrX * (0.85 + r() * 0.3);
+          const clicks = imps * (sp.ctr / 100) * ctrX * (0.85 + r() * 0.3) * wearOut(adName, i);
           carry += clicks * (sp.cvr / 100) * (0.8 + r() * 0.4);
           const n = Math.floor(carry);
           carry -= n;
@@ -373,6 +373,29 @@ const AGE = [["18-24", 0.04, 0.75], ["25-34", 0.24, 0.9], ["35-44", 0.33, 1], ["
 const bucketMin = (b) => Number(b.slice(0, 2));
 const bucketMax = (b) => (b === "65+" ? 120 : Number(b.slice(3)));
 
+// Some demo ads wear out over the last three weeks: the same people keep seeing
+// them, so fewer click (over the last two weeks). Lets the fatigue check show something real in demo.
+const WEAR = { "static-price-plan": 0.62, "reminder-price-plan": 0.58, "lagoon-film-15s": 0.5, "carousel-homes": 0.24, "villa-carousel": 0.28 };
+function wearOut(adName, i) {
+  const k = WEAR[adName];
+  if (!k) return 1;
+  return 1 - k * Math.min(1, Math.max(0, (i - (DAYS - 16)) / 15));
+}
+
+function demoDaily(state, range, since, until) {
+  const [a, b] = rangeIdx(range, since, until);
+  const rows = [];
+  for (const c of state.campaigns)
+    for (const s of c.sets)
+      for (const ad of s.ads)
+        for (let i = a; i <= b; i += 1) {
+          const x = ad.rows[i];
+          if (!x) continue;
+          rows.push({ date: ymd(dayIso(i)), campaignId: c.id, adsetId: s.id, adId: ad.id, adName: ad.name, spend: Math.round(x.spend * 100) / 100, impressions: Math.round(x.imps), reach: Math.round(x.imps / 1.15), clicks: Math.round(x.clicks), leads: x.leads, convos: x.convos });
+        }
+  return { range: { preset: range, since: ymd(dayIso(a)), until: ymd(dayIso(b)) }, fetchedAt: new Date().toISOString(), demo: true, rows };
+}
+
 function demoBreakdowns(state, range, campaignId, since, until) {
   const idx = rangeIdx(range, since, until);
   const region = {};
@@ -545,6 +568,8 @@ export function createDemo(catalog) {
     switch (path) {
       case "/api/settings":
         return wait(DEMO_SETTINGS, 40);
+      case "/api/daily":
+        return wait(demoDaily(state, params.range || "last_14d", params.since, params.until), 250);
       case "/api/breakdowns":
         return wait(demoBreakdowns(state, params.range || "last_7d", params.campaign || null, params.since, params.until), 300);
       case "/api/tree":

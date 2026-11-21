@@ -10,6 +10,7 @@ import * as geo from "./views/geo.js";
 import * as reach from "./views/reach.js";
 import * as abtests from "./views/abtests.js";
 import * as report from "./views/report.js";
+import * as trends from "./views/trends.js";
 import * as website from "./views/website.js";
 import * as campaigns from "./views/campaigns.js";
 import * as planner from "./views/planner.js";
@@ -42,6 +43,7 @@ const VIEWS = [
   { id: "reach", label: "Who & where", icon: "web", group: "Intelligence", mod: reach },
   { id: "website", label: "Website Funnel", icon: "web", group: "Intelligence", mod: website },
   { id: "campaigns", label: "Campaigns", icon: "ads", group: "Ads", mod: campaigns },
+  { id: "trends", label: "Trends & fatigue", icon: "plan", group: "Ads", mod: trends },
   { id: "abtests", label: "A/B tests", icon: "plan", group: "Ads", mod: abtests },
   { id: "planner", label: "Budget planner", icon: "plan", group: "Ads", mod: planner },
   { id: "report", label: "Weekly report", icon: "book", group: "Ads", mod: report },

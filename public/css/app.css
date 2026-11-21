@@ -471,3 +471,20 @@ tr.row-selected td { background: color-mix(in srgb, var(--accent-soft) 50%, var(
   .report-sheet section, .rstat, .rtable tr { break-inside: avoid; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ---------- Trends & fatigue ---------- */
+.tcharts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.tcell { border: 1px solid var(--line); border-radius: 10px; padding: 10px 10px 8px; min-width: 0; }
+.tcell b { font-size: 16px; font-weight: 650; }
+.tchart { width: 100%; height: auto; display: block; margin-top: 4px; overflow: visible; }
+.tchart .grid { stroke: var(--line); stroke-width: 1; }
+.tchart .ax { fill: var(--faint); font-size: 9.5px; font-variant-numeric: tabular-nums; }
+.tchart .ln { fill: none; stroke: var(--s4); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.tchart .dot { fill: var(--s4); stroke: var(--card); stroke-width: 2; }
+.tchart .xh { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.tchart .hit { cursor: crosshair; }
+.tc { font-weight: 600; } .tc.good { color: var(--good); } .tc.bad { color: var(--bad); }
+.spark { width: 100px; height: 28px; display: block; }
+.spark polyline { fill: none; stroke: var(--s4); stroke-width: 1.8; stroke-linejoin: round; }
+@media (max-width: 1100px) { .tcharts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .tcharts { grid-template-columns: 1fr; } }

@@ -511,27 +511,9 @@ export function dailyPerformance(tree, list) {
     });
   }
 
-  // Fallback when connected to live Meta without a daily breakdown array
-  const days = Object.keys(byDayLeads).sort();
-  const totalSpend = (tree?.campaigns || []).reduce((n, c) => n + (c.m?.spend || 0), 0);
-  const perDaySpend = days.length ? totalSpend / days.length : 0;
-  return days.map((date) => {
-    const l = byDayLeads[date];
-    return {
-      date,
-      spend: Math.round(perDaySpend),
-      impressions: 0,
-      linkClicks: 0,
-      landingViews: 0,
-      leads: l.logged,
-      logged: l.logged,
-      valid: l.valid,
-      meetings: l.meetings,
-      reserved: l.reserved,
-      cpvl: l.valid > 0 ? Math.round(perDaySpend / l.valid) : null,
-      cpl: l.logged > 0 ? Math.round(perDaySpend / l.logged) : null,
-    };
-  });
+  // Without Meta's day-by-day report there is no honest daily spend to show:
+  // never spread the total evenly across days. The chart shows its empty state.
+  return [];
 }
 
 // ---------------------------------------------------------------- Egypt & GCC Geo Intelligence

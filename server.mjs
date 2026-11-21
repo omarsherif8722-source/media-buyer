@@ -393,6 +393,14 @@ async function handleApi(req, res, urlPath) {
         treeCache.set(key, { at: Date.now(), data });
         return sendJson(res, 200, data);
       }
+      case "GET /api/daily": {
+        const key = `daily|${q.get("range")}|${q.get("since")}|${q.get("until")}`;
+        const hit = treeCache.get(key);
+        if (hit && Date.now() - hit.at < TREE_MS && q.get("fresh") !== "1") return sendJson(res, 200, { ...hit.data, cached: true });
+        const data = await meta.daily(q.get("range") || "last_14d", q.get("since"), q.get("until"));
+        treeCache.set(key, { at: Date.now(), data });
+        return sendJson(res, 200, data);
+      }
       case "GET /api/breakdowns": {
         const key = `bd|${q.get("range")}|${q.get("since")}|${q.get("until")}|${q.get("campaign") || ""}`;
         const hit = treeCache.get(key);
