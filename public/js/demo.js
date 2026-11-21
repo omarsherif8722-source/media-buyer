@@ -395,8 +395,13 @@ export function createDemo(catalog) {
 
   function tree(range) {
     const idx = rangeIdx(range);
+    const life = dailySeries([0, DAYS - 1]);
+    const lifetimeSpend = Math.round(life.reduce((s, d) => s + (d.spend || 0), 0));
+    const activeDailyBudget = state.campaigns
+      .filter((c) => c.status === "ACTIVE")
+      .reduce((sum, c) => sum + c.sets.filter((s) => s.status === "ACTIVE").reduce((acc, s) => acc + (s.budget || 0), 0), 0);
     return {
-      account: { id: "act_demo", name: "Demo account (made-up data)", business: "G Developments (demo)", currency: "EGP", timezone: "Africa/Cairo", status: 1, amountSpent: null, spendCap: null },
+      account: { id: "act_demo", name: "Demo account (made-up data)", business: "G Developments (demo)", currency: "EGP", timezone: "Africa/Cairo", status: 1, amountSpent: lifetimeSpend, dailyBudgetRunRate: activeDailyBudget, spendCap: null },
       range: { preset: range, since: ymd(dayIso(idx[0])), until: ymd(dayIso(idx[1])) },
       fetchedAt: new Date().toISOString(),
       readOnly: false,

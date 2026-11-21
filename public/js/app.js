@@ -173,7 +173,11 @@ function render() {
   if (banner) banner.hidden = !demo;
   document.documentElement.classList.toggle("is-demo", demo);
   const status = $("[data-appbar-status]");
-  if (status) status.innerHTML = demo ? html`<span class="pill warn">Demo account · Interactive simulation</span> <span class="muted small">13 G Developments Projects · 1,787 ATS Units</span>`.s : ctx.settings?.connected ? html`<span class="pill good">Meta connected</span> <span class="muted">${ctx.tree?.account?.name || ""}</span>`.s : ctx.settings ? html`<span class="pill line">Meta not connected (Switch Demo ON to explore)</span>`.s : "";
+  const periodSpend = (ctx.tree?.campaigns || []).reduce((s, c) => s + (c.m?.spend || 0), 0);
+  const lifeSpend = ctx.tree?.account?.amountSpent || null;
+  const periodLabel = PERIODS.find(([k]) => k === ctx.period)?.[1] || ctx.period;
+  const spendBadge = ctx.tree ? html`<span class="pill accent">Spent (${periodLabel}): <b>${ raw(new Intl.NumberFormat("en-US").format(Math.round(periodSpend))) } ${ctx.tree.account?.currency || "EGP"}</b></span>${lifeSpend ? html` <span class="pill line">95d Total: <b>${ raw(new Intl.NumberFormat("en-US").format(Math.round(lifeSpend))) } ${ctx.tree.account?.currency || "EGP"}</b></span>` : ""}` : "";
+  if (status) status.innerHTML = demo ? html`<span class="pill warn">Demo account</span> ${spendBadge}`.s : ctx.settings?.connected ? html`<span class="pill good">Meta connected</span> <span class="muted">${ctx.tree?.account?.name || ""}</span> ${spendBadge}`.s : ctx.settings ? html`<span class="pill line">Meta not connected (Switch Demo ON to explore)</span>`.s : "";
   const conn = $("[data-conn]");
   if (conn) {
     const s = ctx.settings;

@@ -4,12 +4,229 @@
 // Grade-A priority speed-to-lead queue.
 import { html, raw, money, n, pct, egp, ago, toast, confirmDialog } from "../ui.js";
 import { post } from "../api.js";
-import { targets, saveTargets, DEFAULT_TARGETS } from "../store.js";
+import { load, save, targets, saveTargets, DEFAULT_TARGETS } from "../store.js";
 import {
   allLeads, quality, treeDates, score, alerts, isWaiting, isValid, MEETING_UP, RESERVED_UP,
   dailyPerformance, scoreLeadGrade, projectFromName, geoBreakdown,
 } from "../model.js";
 import { kpi, connectCard, loadingCard } from "./common.js";
+
+let spendTab = "project"; // "project" | "campaign" | "geo" | "efficiency"
+const PALETTE = ["#ce3927", "#18864b", "#2a5db0", "#d9822b", "#7c3aed", "#0d9488", "#6c645e"];
+
+function renderTotalSpentModule(ctx, tt, q, daily, geo, t) {
+  const tree = ctx.tree;
+  if (!tree) return "";
+  const monthlyBudget = Number(load("monthlyBudgetCap", 180000)) || 180000;
+  const daysCount = Math.max(1, daily?.length || 7);
+  const avgDaily = tt.spend / daysCount;
+  const activeRunRate =
+    tree.account?.dailyBudgetRunRate ||
+    tree.campaigns
+      .filter((c) => c.effectiveStatus === "ACTIVE")
+      .reduce((sum, c) => sum + (c.dailyBudget || c.adsets.filter((s) => s.effectiveStatus === "ACTIVE").reduce((a, s) => a + (s.dailyBudget || 0), 0)), 0) ||
+    Math.round(avgDaily);
+  const projected30d = Math.round(activeRunRate * 30);
+  const lifetimeSpend = tree.account?.amountSpent || Math.round(tt.spend);
+  const pacePct = monthlyBudget > 0 ? Math.round((projected30d / monthlyBudget) * 100) : 0;
+  const paceTone = pacePct > 110 ? "bad" : pacePct < 75 ? "warn" : "good";
+  const paceLabel = pacePct > 110 ? `Over-pacing (${pacePct}%)` : pacePct < 75 ? `Under-pacing (${pacePct}%)` : `On pace (${pacePct}%)`;
+
+  // Build breakdown slices for the active tab
+  let slices = [];
+  if (spendTab === "project") {
+    const byP = {};
+    for (const c of tree.campaigns) {
+      const p = projectFromName(c.name, ctx.catalog);
+      const key = p ? p.id : "other";
+      const label = p ? `${p.name}${p.parent ? ` (${p.parent})` : ""}` : "Unassigned Project";
+      const row = (byP[key] ??= { id: key, label, spend: 0, leads: 0, valid: 0, meetings: 0, reserved: 0, link: p ? `#/campaigns/${c.id}` : "#/campaigns" });
+      row.spend += c.m?.spend || 0;
+      row.leads += (c.m?.leads || 0) + (c.m?.convos || 0);
+      const cq = q.campaign[c.id];
+      if (cq) {
+        row.valid += cq.valid || 0;
+        row.meetings += cq.meetings || 0;
+        row.reserved += cq.reserved || 0;
+      }
+    }
+    slices = Object.values(byP).filter((s) => s.spend > 0).sort((a, b) => b.spend - a.spend);
+  } else if (spendTab === "campaign") {
+    slices = tree.campaigns
+      .filter((c) => (c.m?.spend || 0) > 0)
+      .map((c) => {
+        const cq = q.campaign[c.id];
+        return {
+          id: c.id,
+          label: c.name,
+          sub: c.objective === "OUTCOME_ENGAGEMENT" ? "WhatsApp Messages" : "Meta Instant Forms",
+          spend: c.m?.spend || 0,
+          leads: (c.m?.leads || 0) + (c.m?.convos || 0),
+          valid: cq?.valid || 0,
+          meetings: cq?.meetings || 0,
+          reserved: cq?.reserved || 0,
+          link: `#/campaigns/${c.id}`,
+        };
+      })
+      .sort((a, b) => b.spend - a.spend);
+  } else if (spendTab === "geo") {
+    slices = (geo?.corridors || [])
+      .filter((c) => c.spend > 0)
+      .map((c) => ({
+        id: c.id,
+        label: c.label,
+        sub: c.gov,
+        spend: c.spend,
+        leads: c.leads || c.metaLeads,
+        valid: c.valid,
+        meetings: c.meetings,
+        reserved: c.reserved,
+        link: "#/geo",
+      }))
+      .sort((a, b) => b.spend - a.spend);
+  } else {
+    // Working vs. Steady vs. Wasted Spend
+    const tiers = {
+      scale: { id: "scale", label: "High-Yield Scaling Spend (CPVL beats target)", sub: "Ad sets ready to scale +20%", spend: 0, leads: 0, valid: 0, meetings: 0, reserved: 0, color: "#18864b", link: "#/campaigns" },
+      steady: { id: "steady", label: "Steady / Learning Spend (Within threshold)", sub: "Ad sets delivering normal buyer flow", spend: 0, leads: 0, valid: 0, meetings: 0, reserved: 0, color: "#2a5db0", link: "#/campaigns" },
+      waste: { id: "waste", label: "Wasted / Bleeding Spend (0 valid or >1.35× CPVL)", sub: "Needs immediate pause or geo/hook fix", spend: 0, leads: 0, valid: 0, meetings: 0, reserved: 0, color: "#b42318", link: "#/campaigns" },
+    };
+    const targetCpvl = t.cpvl || 900;
+    for (const c of tree.campaigns) {
+      for (const s of c.adsets) {
+        const m = s.m;
+        if (!m || !m.spend) continue;
+        const sc = score(m, q.adset[s.id]);
+        const bucket =
+          sc.valid >= 2 && sc.cpvl && sc.cpvl <= targetCpvl * 0.9
+            ? tiers.scale
+            : sc.valid === 0 || (sc.cpvl && sc.cpvl > targetCpvl * 1.35)
+            ? tiers.waste
+            : tiers.steady;
+        bucket.spend += m.spend;
+        bucket.leads += sc.metaLeads;
+        bucket.valid += sc.valid;
+        bucket.meetings += sc.meetings;
+        bucket.reserved += sc.reserved;
+      }
+    }
+    slices = Object.values(tiers).filter((x) => x.spend > 0);
+  }
+
+  const totalSliceSpend = Math.max(1, slices.reduce((s, x) => s + x.spend, 0));
+
+  return html`
+  <div class="card spend-module" style="margin-bottom:14px">
+    <div class="card-head">
+      <div>
+        <div class="row wrap" style="gap:8px">
+          <h2>Total Spent &amp; Budget Pacing Module</h2>
+          <span class="pill ${paceTone}">${paceLabel}</span>
+        </div>
+        <p>Complete breakdown of where every EGP is spent across projects, campaigns, Egyptian corridors, and efficiency tiers.</p>
+      </div>
+      <div class="seg" role="group" aria-label="Total Spent Breakdown">
+        <button type="button" data-spend-tab="project" aria-pressed="${spendTab === "project"}">By Project</button>
+        <button type="button" data-spend-tab="campaign" aria-pressed="${spendTab === "campaign"}">By Campaign</button>
+        <button type="button" data-spend-tab="geo" aria-pressed="${spendTab === "geo"}">By Geography</button>
+        <button type="button" data-spend-tab="efficiency" aria-pressed="${spendTab === "efficiency"}">Working vs. Wasted</button>
+      </div>
+    </div>
+
+    <div class="kpis" style="margin-bottom:14px">
+      <div class="kpi key">
+        <span>Selected Period Spent (${daysCount}d)</span>
+        <b>${money(tt.spend)}</b>
+        <small>Avg ${money(avgDaily)} / day</small>
+      </div>
+      <div class="kpi">
+        <span>Active Daily Run-Rate</span>
+        <b>${money(activeRunRate)}/day</b>
+        <small>30-day projection: <b>${money(projected30d)}</b></small>
+      </div>
+      <div class="kpi">
+        <span>Monthly Budget Target (EGP)</span>
+        <div class="row" style="margin-top:3px">
+          <input class="input" type="number" min="10000" step="5000" value="${monthlyBudget}" data-monthly-cap aria-label="Monthly budget target in EGP" style="min-height:28px;padding:2px 8px;font-weight:650">
+        </div>
+        <small>${monthlyBudget >= projected30d ? `${money(monthlyBudget - projected30d)} buffer remaining` : `${money(projected30d - monthlyBudget)} over monthly cap`}</small>
+      </div>
+      <div class="kpi">
+        <span>Cumulative Account Spend</span>
+        <b>${money(lifetimeSpend)}</b>
+        <small>${q.total.reserved ? `${money(tt.spend / q.total.reserved)} per reservation in period` : "95-day tracked total"}</small>
+      </div>
+    </div>
+
+    <div class="spend-stack-wrap">
+      <div class="row between small muted" style="margin-bottom:6px">
+        <span>Share of Total Spend (${money(tt.spend)})</span>
+        <span>100% allocated across ${slices.length} ${spendTab === "project" ? "projects" : spendTab === "campaign" ? "campaigns" : spendTab === "geo" ? "corridors" : "efficiency tiers"}</span>
+      </div>
+      <div class="spend-stack-bar" role="img" aria-label="Proportional spend distribution">
+        ${slices.map((s, i) => {
+          const share = (s.spend / totalSliceSpend) * 100;
+          const color = s.color || PALETTE[i % PALETTE.length];
+          return html`<div class="spend-seg" style="width:${share.toFixed(2)}%;background:${color}" title="${s.label}: ${money(s.spend)} (${share.toFixed(1)}%)"></div>`;
+        })}
+      </div>
+      <div class="row wrap small" style="gap:12px;margin-top:8px">
+        ${slices.slice(0, 7).map((s, i) => {
+          const share = (s.spend / totalSliceSpend) * 100;
+          const color = s.color || PALETTE[i % PALETTE.length];
+          return html`<span class="row" style="gap:5px"><i class="legend-swatch" style="background:${color};margin:0"></i><b>${s.label.split("·")[0].trim()}</b> <span class="muted">${money(s.spend, { short: true })} (${share.toFixed(0)}%)</span></span>`;
+        })}
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:12px">
+      <table>
+        <thead>
+          <tr>
+            <th>${spendTab === "project" ? "Project" : spendTab === "campaign" ? "Campaign" : spendTab === "geo" ? "Corridor / Governorate" : "Spend Efficiency Tier"}</th>
+            <th class="n">Amount Spent</th>
+            <th style="min-width:130px">Share of Spend</th>
+            <th class="n">Leads</th>
+            <th class="n">Valid Buyers</th>
+            <th class="n">Cost / Valid</th>
+            <th class="n">Meetings</th>
+            <th class="n">Reserved</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${slices.map((s, i) => {
+            const share = (s.spend / totalSliceSpend) * 100;
+            const cpvl = s.valid > 0 ? s.spend / s.valid : null;
+            const color = s.color || PALETTE[i % PALETTE.length];
+            return html`<tr>
+              <td>
+                <div class="row" style="gap:7px">
+                  <i class="legend-swatch" style="background:${color};flex:none"></i>
+                  <div>
+                    <div class="name">${s.label}</div>
+                    ${s.sub ? html`<div class="tiny muted">${s.sub}</div>` : ""}
+                  </div>
+                </div>
+              </td>
+              <td class="n"><b>${money(s.spend)}</b></td>
+              <td>
+                <div class="row between tiny muted"><span>${share.toFixed(1)}%</span></div>
+                <div class="bar"><i style="width:${Math.round(share)}%;background:${color}"></i></div>
+              </td>
+              <td class="n">${n(s.leads)}</td>
+              <td class="n"><b>${n(s.valid)}</b></td>
+              <td class="n"><b class="${cpvl && t.cpvl && cpvl <= t.cpvl ? "stage-valid" : ""}">${money(cpvl)}</b></td>
+              <td class="n">${n(s.meetings)}</td>
+              <td class="n"><b>${n(s.reserved)}</b></td>
+              <td class="n"><a class="btn sm ghost" href="${s.link}">Inspect</a></td>
+            </tr>`;
+          })}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
 
 function totals(tree) {
   const t = { spend: 0, impressions: 0, leads: 0, convos: 0, linkClicks: 0, landingViews: 0, on: 0, campaigns: tree?.campaigns.length || 0 };
@@ -279,6 +496,8 @@ export function render(ctx) {
     ${kpi("Reservations (EOI)", n(q.total.reserved), q.total.reserved ? `≈ ${egp(pipelineEgp)} sales volume` : "5% EOI / Contract", true)}
   </div>
 
+  ${tree ? renderTotalSpentModule(ctx, tt, q, daily, geo, t) : ""}
+
   ${tree ? html`
   <div class="grid g2" style="margin-bottom:14px">
     <div class="card">
@@ -397,6 +616,16 @@ export function render(ctx) {
 }
 
 export function mount(root, ctx) {
+  root.onchange = (e) => {
+    if (e.target.matches("[data-monthly-cap]")) {
+      const val = Number(e.target.value);
+      if (val > 0) {
+        save("monthlyBudgetCap", val);
+        toast(`Monthly budget target updated to ${money(val)}.`, "good");
+        ctx.render();
+      }
+    }
+  };
   root.onsubmit = (e) => {
     const form = e.target.closest("[data-targets]");
     if (!form) return;
@@ -409,6 +638,11 @@ export function mount(root, ctx) {
     ctx.render();
   };
   root.onclick = async (e) => {
+    const tabBtn = e.target.closest("[data-spend-tab]");
+    if (tabBtn) {
+      spendTab = tabBtn.dataset.spendTab;
+      return ctx.render();
+    }
     const scaleBtn = e.target.closest("[data-quick-scale]");
     if (scaleBtn) {
       const id = scaleBtn.dataset.quickScale;
