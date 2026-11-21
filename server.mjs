@@ -15,8 +15,11 @@ import * as meta from "./lib/meta.mjs";
 
 const ROOT = resolve(new URL(".", import.meta.url).pathname, "public");
 const PORT = Number(process.env.PORT) || 4173;
-const USER = process.env.DASHBOARD_USER || "media";
-const PASS = process.env.DASHBOARD_PASSWORD || "";
+// Values pasted into Render's settings often carry a stray space or quote
+// marks; strip them so the password typed at sign-in still matches.
+const clean = (v) => String(v || "").trim().replace(/^(["'])(.*)\1$/s, "$2").trim();
+const USER = clean(process.env.DASHBOARD_USER) || "media";
+const PASS = clean(process.env.DASHBOARD_PASSWORD);
 
 if (PASS.length < 12) {
   console.error("DASHBOARD_PASSWORD is missing or shorter than 12 characters — serving 503 to everyone.");
@@ -438,7 +441,7 @@ const server = createServer(async (req, res) => {
     const form = new URLSearchParams((await readForm(req)) ?? "");
     // Phones like to capitalise the first letter; the username is not the secret.
     const user = (form.get("username") || "").trim().toLowerCase();
-    if (!(same(user, USER.toLowerCase()) & same(form.get("password") || "", PASS))) {
+    if (!(same(user, USER.toLowerCase()) & same((form.get("password") || "").trim(), PASS))) {
       recordFail(ip);
       return sendLogin(req, res, 401, blocked(ip) ? "blocked" : "wrong");
     }
@@ -457,7 +460,7 @@ const server = createServer(async (req, res) => {
   if (!ok && scheme === "Basic" && token) {
     const raw = Buffer.from(token, "base64").toString();
     const i = raw.indexOf(":");
-    ok = i > 0 && Boolean(same(raw.slice(0, i), USER) & same(raw.slice(i + 1), PASS));
+    ok = i > 0 && Boolean(same(raw.slice(0, i).trim().toLowerCase(), USER.toLowerCase()) & same(raw.slice(i + 1).trim(), PASS));
   }
   if (!ok) {
     if (scheme === "Basic") recordFail(ip);

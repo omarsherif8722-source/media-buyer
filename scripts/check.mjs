@@ -105,6 +105,7 @@ const main = await start(base, metaEnv);
 const ro = await start(base + 1, { ...metaEnv, META_READ_ONLY: "1" });
 const bare = await start(base + 2, { DASHBOARD_PASSWORD: PASS });
 const nopass = await start(base + 3, { DASHBOARD_PASSWORD: "" });
+const messy = await start(base + 4, { DASHBOARD_PASSWORD: ` "${PASS}" `, DASHBOARD_USER: " Media " });
 const U = (p, port = base) => `http://127.0.0.1:${port}${p}`;
 // fetch() drops Sec-Fetch-* headers, so browser-like requests go through node:http.
 const raw = (path, { method = "GET", headers = {}, body } = {}) =>
@@ -153,6 +154,11 @@ await test("wrong password refused", async () => {
 await test("right password signs in", async () => {
   cookie = await login(base);
   assert.match(cookie, /gmb_session=v1\./);
+});
+await test("password saved with spaces or quotes on Render still signs in", async () => {
+  const r = await fetch(U("/login", base + 4), { method: "POST", redirect: "manual", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: `username=MEDIA&password=${PASS}%20` });
+  assert.equal(r.status, 303);
+  assert.match(r.headers.get("set-cookie") || "", /gmb_session=v1\./);
 });
 await test("dashboard page served with a content security policy", async () => {
   const r = await fetch(U("/"), { headers: { Cookie: cookie } });
@@ -389,7 +395,7 @@ await test("demo 'get new leads' brings Meta-shaped leads", async () => {
   assert.match(r.leads[0].metaId, /^\d{16}$/);
 });
 
-for (const s of [main, ro, bare, nopass]) s.child.kill();
+for (const s of [main, ro, bare, nopass, messy]) s.child.kill();
 graph.close();
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll checks passed.");
 process.exit(failures ? 1 : 0);
