@@ -1,0 +1,28 @@
+# Render Blueprint: password-protected media-buying dashboard on the free plan.
+# Secrets (password, Meta token) are set in the Render dashboard, never committed.
+services:
+  - type: web
+    name: g-media-buying
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: "true"
+    startCommand: node server.mjs
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 22.11.0
+      - key: DASHBOARD_USER
+        value: media
+      - key: DASHBOARD_PASSWORD
+        sync: false
+      - key: META_ACCESS_TOKEN
+        sync: false
+      - key: META_AD_ACCOUNT_ID
+        sync: false
+      - key: META_PAGE_ID
+        sync: false
+      - key: META_DATASET_ID
+        sync: false
+      - key: META_READ_ONLY
+        value: "0"

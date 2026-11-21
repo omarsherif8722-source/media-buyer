@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+*.log
+.DS_Store
+# Private exports never belong in this repository
+private/
+*-leads-*.csv
+g-media-backup-*.json
+meta-list-*.csv
+
+# Local preview settings
+.claude/

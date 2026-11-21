@@ -1,0 +1,1877 @@
+{
+ "generated": "2026-11-21",
+ "source": {
+  "website": "https://mahmoud-elhemaly.onrender.com",
+  "payment": "Standard Payment Plans, October 18, 2026 (G Developments Commercial Operations Department)",
+  "inventory": "G Developments Primary ATS exports, generated 2026-11-20"
+ },
+ "site": {
+  "url": "https://mahmoud-elhemaly.onrender.com",
+  "advisor": "Mahmoud Elhemaly",
+  "whatsapp": "201227275122",
+  "phoneDisplay": "+20 122 727 5122",
+  "hours": "Daily, 10:00 – 22:00 Cairo time"
+ },
+ "regions": [
+  {
+   "id": "east",
+   "name": "East Cairo",
+   "line": "NEWKAIRO, on the Cairo–Suez Road in New Heliopolis."
+  },
+  {
+   "id": "west",
+   "name": "West Cairo",
+   "line": "NEWGIZA and IVY, along the Cairo–Alexandria Desert Road."
+  },
+  {
+   "id": "coast",
+   "name": "North Coast",
+   "line": "Ras El Hekma and Ghazala Bay, on the Mediterranean."
+  },
+  {
+   "id": "sokhna",
+   "name": "Ain Sokhna",
+   "line": "Ein Bay, ninety minutes from New Cairo on the Red Sea."
+  }
+ ],
+ "projects": [
+  {
+   "id": "krypton",
+   "name": "Krypton",
+   "parent": "NEWKAIRO",
+   "region": "east",
+   "regionName": "East Cairo",
+   "place": "The Boulevard, NEWKAIRO",
+   "status": "New launch",
+   "illustrativeImages": false,
+   "slug": "krypton",
+   "url": "https://mahmoud-elhemaly.onrender.com/krypton/",
+   "intro": "Serviced apartments set above an active retail street, with concierge, housekeeping and The Boulevard at the front door. Every home is delivered fully finished with air conditioning.",
+   "facts": [
+    [
+     "From",
+     "7.88M EGP"
+    ],
+    [
+     "Plan",
+     "5% + 5%, 8 years"
+    ],
+    [
+     "Finish",
+     "Fully finished, A/C"
+    ],
+    [
+     "Homes",
+     "1 to 3 bedrooms"
+    ]
+   ],
+   "fromText": "7.88M EGP",
+   "highlights": [
+    "Hotel-style service and concierge",
+    "Park and pool views or Boulevard views",
+    "Electric tram stop on The Boulevard",
+    "Next to the international school, sports club and 5-star hotel"
+   ],
+   "amenities": [
+    "Hotel-style concierge",
+    "housekeeping",
+    "Cafés on The Boulevard",
+    "Shops on The Boulevard",
+    "Tram stop at the door",
+    "Pools",
+    "Park",
+    "5-star hotel",
+    "Air conditioning installed"
+   ],
+   "homes": [
+    {
+     "name": "One bedroom",
+     "from": 7875000,
+     "to": 9171750
+    },
+    {
+     "name": "Two bedrooms",
+     "from": 11287500,
+     "to": 13702500
+    },
+    {
+     "name": "Three bedrooms",
+     "from": 14810000,
+     "to": 20354250
+    }
+   ],
+   "from": 7875000,
+   "fromSource": "Website homes list",
+   "payment": {
+    "destination": "NEWKAIRO",
+    "maintenance": {
+     "pct": 8,
+     "due": "12 months before delivery"
+    },
+    "source": "Standard Payment Plans, October 18, 2026 (G Developments Commercial Operations Department)",
+    "phases": [
+     {
+      "id": "nk-krypton",
+      "name": "Krypton",
+      "official": false,
+      "note": "Launch terms from the Krypton release: 5% EOI, credited to the 5% down payment. Cash terms on request.",
+      "years": 8,
+      "down": [
+       5,
+       5
+      ],
+      "installments": 32,
+      "delivery": null,
+      "cash": null
+     }
+    ]
+   },
+   "cashOnly": false,
+   "inventory": {
+    "source": "Krypton release (Blocks 1–2)",
+    "released": 72,
+    "asOf": null,
+    "available": null,
+    "byType": []
+   },
+   "hasFilm": true,
+   "brochures": 2
+  },
+  {
+   "id": "golf-views",
+   "name": "Golf Views",
+   "parent": "NEWKAIRO",
+   "region": "east",
+   "regionName": "East Cairo",
+   "place": "Argon and Cerium Views, NEWKAIRO Golf",
+   "status": "Selling",
+   "illustrativeImages": false,
+   "slug": "golf-views",
+   "url": "https://mahmoud-elhemaly.onrender.com/golf-views/",
+   "intro": "Villas facing the 18-hole championship course, from twin villas on the third row to Fairscapes and one-storey golf estates on the fairway.",
+   "facts": [
+    [
+     "Plan",
+     "5% + 5%, 8 years"
+    ],
+    [
+     "Cash",
+     "30% off"
+    ],
+    [
+     "Delivery",
+     "48 months"
+    ],
+    [
+     "Finish",
+     "Basic finishing"
+    ]
+   ],
+   "fromText": null,
+   "highlights": [
+    "Front-row golf estates of 654 and 732 m² on request",
+    "Golf hotel, clubhouse and lake",
+    "Main gate on the Cairo–Suez Road",
+    "Landscaped buffers between every row"
+   ],
+   "amenities": [
+    "Front-row golf",
+    "Golf hotel",
+    "clubhouse",
+    "lake",
+    "Landscaped buffers"
+   ],
+   "homes": [],
+   "from": 37816000,
+   "fromSource": "Cheapest available unit, G Developments Primary ATS exports (2026-11-18)",
+   "payment": {
+    "destination": "NEWKAIRO",
+    "maintenance": {
+     "pct": 8,
+     "due": "12 months before delivery"
+    },
+    "source": "Standard Payment Plans, October 18, 2026 (G Developments Commercial Operations Department)",
+    "phases": [
+     {
+      "id": "nk-golf",
+      "name": "NEWKAIRO Golf",
+      "official": true,
+      "note": null,
+      "years": 8,
+      "down": [
+       5,
+       5
+      ],
+      "installments": 32,
+      "delivery": 48,
+      "cash": 30
+     }
+    ]
+   },
+   "cashOnly": false,
+   "inventory": {
+    "source": "G Developments Primary ATS exports",
+    "asOf": "2026-11-18",
+    "total": 65,
+    "available": 55,
+    "hold": 9,
+    "requested": 1,
+    "from": 37816000,
+    "byType": [
+     {
+      "type": "Twin Villa Option A",
+      "available": 22,
+      "from": 37816000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Twin Villa Option B",
+      "available": 8,
+      "from": 47646000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Tee View Villas",
+      "available": 17,
+      "from": 50759000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Fairscapes",
+      "available": 8,
+      "from": 64361000,
+      "beds": [
+       4
+      ]
+     }
+    ]
+   },
+   "hasFilm": false,
+   "brochures": 1
+  },
+  {
+   "id": "neon-views",
+   "name": "Neon Views",
+   "parent": "NEWKAIRO",
+   "region": "east",
+   "regionName": "East Cairo",
+   "place": "Lily Plaza and Wadi Springs, NEWKAIRO",
+   "status": "Selling",
+   "illustrativeImages": false,
+   "slug": "neon-views",
+   "url": "https://mahmoud-elhemaly.onrender.com/neon-views/",
+   "intro": "Fully finished townhouses, semi-attached and standalone villas, many with a rooftop penthouse, arranged around garden ribbons and meditation lakes.",
+   "facts": [
+    [
+     "Plan",
+     "5% + 5%, 8 years"
+    ],
+    [
+     "Cash",
+     "30% off"
+    ],
+    [
+     "Delivery",
+     "48 months"
+    ],
+    [
+     "Finish",
+     "Fully finished"
+    ]
+   ],
+   "fromText": null,
+   "highlights": [
+    "Penthouse options on townhouses and villas",
+    "Wadi Springs and meditation lakes",
+    "Garden ribbons and active zones",
+    "Walking distance to NEWKAIRO Golf"
+   ],
+   "amenities": [
+    "Meditation lakes",
+    "Garden ribbons",
+    "Active zones",
+    "Golf a short walk away"
+   ],
+   "homes": [],
+   "from": 19233000,
+   "fromSource": "Cheapest available unit, G Developments Primary ATS exports (2026-11-18)",
+   "payment": {
+    "destination": "NEWKAIRO",
+    "maintenance": {
+     "pct": 8,
+     "due": "12 months before delivery"
+    },
+    "source": "Standard Payment Plans, October 18, 2026 (G Developments Commercial Operations Department)",
+    "phases": [
+     {
+      "id": "nk-neon",
+      "name": "Neon Views",
+      "official": true,
+      "note": null,
+      "years": 8,
+      "down": [
+       5,
+       5
+      ],
+      "installments": 32,
+      "delivery": 48,
+      "cash": 30
+     }
+    ]
+   },
+   "cashOnly": false,
+   "inventory": {
+    "source": "G Developments Primary ATS exports",
+    "asOf": "2026-11-18",
+    "total": 97,
+    "available": 87,
+    "hold": 10,
+    "requested": 0,
+    "from": 19233000,
+    "byType": [
+     {
+      "type": "Townhouse Middle",
+      "available": 12,
+      "from": 19233000,
+      "beds": [
+       3
+      ]
+     },
+     {
+      "type": "Semi Attached Villa",
+      "available": 5,
+      "from": 20948000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Townhouse Middle With Penthouse",
+      "available": 9,
+      "from": 22973000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Semi Attached Villa With Penthouse",
+      "available": 22,
+      "from": 25093000,
+      "beds": [
+       5
+      ]
+     },
+     {
+      "type": "Standalone With Penthouse",
+      "available": 39,
+      "from": 33441000,
+      "beds": [
+       5
+      ]
+     }
+    ]
+   },
+   "hasFilm": false,
+   "brochures": 1
+  },
+  {
+   "id": "urban-living",
+   "name": "Urban Living",
+   "parent": "NEWKAIRO",
+   "region": "east",
+   "regionName": "East Cairo",
+   "place": "Buildings B-03, B-10, B-11 and B-12, NEWKAIRO",
+   "status": "Selling",
+   "illustrativeImages": false,
+   "slug": "urban-living",
+   "url": "https://mahmoud-elhemaly.onrender.com/urban-living/",
+   "intro": "Fully finished one to four bedroom apartments, from ground floors with private gardens to upper floors over the park.",
+   "facts": [
+    [
+     "Plan",
+     "8 years"
+    ],
+    [
+     "Finish",
+     "Fully finished"
+    ],
+    [
+     "Homes",
+     "1 to 4 bedrooms"
+    ],
+    [
+     "Gardens",
+     "Ground floors"
+    ]
+   ],
+   "fromText": null,
+   "highlights": [
+    "Garden apartments on the ground floor",
+    "Next to the downtown district",
+    "Three international schools in the masterplan",
+    "Two sports clubs and a medical hub"
+   ],
+   "amenities": [
+    "Private gardens",
+    "Park views",
+    "Downtown next door"
+   ],
+   "homes": [],
+   "from": 12741000,
+   "fromSource": "Cheapest available unit, G Developments Primary ATS exports (2026-11-18)",
+   "payment": {
+    "destination": "NEWKAIRO",
+    "maintenance": {
+     "pct": 8,
+     "due": "12 months before delivery"
+    },
+    "source": "Standard Payment Plans, October 18, 2026 (G Developments Commercial Operations Department)",
+    "phases": [
+     {
+      "id": "nk-urban",
+      "name": "Urban Living",
+      "official": false,
+      "note": "Not listed on the October 18 sheet. Shown with the NEWKAIRO 8-year structure; final terms are confirmed per unit.",
+      "years": 8,
+      "down": [
+       5,
+       5
+      ],
+      "installments": 32,
+      "delivery": null,
+      "cash": null
+     }
+    ]
+   },
+   "cashOnly": false,
+   "inventory": {
+    "source": "G Developments Primary ATS exports",
+    "asOf": "2026-11-18",
+    "total": 99,
+    "available": 99,
+    "hold": 0,
+    "requested": 0,
+    "from": 12741000,
+    "byType": [
+     {
+      "type": "Fully Finished Apartment",
+      "available": 99,
+      "from": 12741000,
+      "beds": [
+       1,
+       2,
+       3,
+       4
+      ]
+     }
+    ]
+   },
+   "hasFilm": false,
+   "brochures": 0
+  },
+  {
+   "id": "newgiza",
+   "name": "NEWGIZA",
+   "parent": null,
+   "region": "west",
+   "regionName": "West Cairo",
+   "place": "KM 22, Cairo–Alexandria Desert Road",
+   "status": "Ready and near-ready",
+   "illustrativeImages": true,
+   "slug": "newgiza",
+   "url": "https://mahmoud-elhemaly.onrender.com/newgiza/",
+   "intro": "The founding city of G Developments: 1,550 acres on the Giza plateau with an 18-hole golf course, New Giza University, the sporting club and Health Park. Today's releases are cash sales close to handover.",
+   "facts": [
+    [
+     "Area",
+     "1,550+ acres"
+    ],
+    [
+     "Open space",
+     "90%"
+    ],
+    [
+     "Terms",
+     "Cash"
+    ],
+    [
+     "Delivery",
+     "12 – 30 months"
+    ]
+   ],
+   "fromText": null,
+   "highlights": [
+    "New Giza University and international schools",
+    "New Giza Sporting Club",
+    "New Giza Health Park",
+    "Kingsrange, Westridge and District One releases"
+   ],
+   "amenities": [
+    "18-hole golf",
+    "New Giza University",
+    "International schools",
+    "New Giza Sporting Club",
+    "New Giza Health Park"
+   ],
+   "homes": [],
+   "from": 21500000,
+   "fromSource": "Cheapest available unit, G Developments Primary ATS exports (2026-11-18)",
+   "payment": {
+    "destination": "NEWGIZA",
+    "maintenance": {
+     "pct": 7,
+     "due": "6 months before delivery",
+     "extra": "House of Giza: 8%, due 12 months before delivery"
+    },
+    "source": "Standard Payment Plans, October 18, 2026 (G Developments Commercial Operations Department)",
+    "phases": [
+     {
+      "id": "ng-cash",
+      "name": "All neighborhoods",
+      "official": true,
+      "note": "Cash payment. Delivery: Kingsrange 1 prototype 12 months, Kingsrange 1 & 2 SD 30 months, Kingsrange 2 prototype 18 months.",
+      "years": 0,
+      "cashOnly": true,
+      "down": [
+       100
+      ],
+      "installments": 0,
+      "delivery": 12,
+      "cash": null
+     },
+     {
+      "id": "ng-utilities",
+      "name": "Parking, storage & driver rooms",
+      "official": true,
+      "note": "Carnell, Kingsrange, Westridge, Jasper and Amberville. Delivered with the main unit.",
+      "years": 6,
+      "down": [
+       0
+      ],
+      "installments": 6,
+      "annual": true,
+      "delivery": null,
+      "cash": null
+     }
+    ]
+   },
+   "cashOnly": false,
+   "inventory": {
+    "source": "G Developments Primary ATS exports",
+    "asOf": "2026-11-18",
+    "total": 12,
+    "available": 11,
+    "hold": 1,
+    "requested": 0,
+    "from": 21500000,
+    "byType": [
+     {
+      "type": "Fully Finished Apartment",
+      "available": 1,
+      "from": 21500000,
+      "beds": [
+       2
+      ]
+     },
+     {
+      "type": "Lakeside",
+      "available": 8,
+      "from": 35000000,
+      "beds": [
+       3
+      ]
+     },
+     {
+      "type": "Townhome",
+      "available": 1,
+      "from": 36000000,
+      "beds": [
+       3
+      ]
+     },
+     {
+      "type": "Twin Villa",
+      "available": 1,
+      "from": 40000000,
+      "beds": []
+     }
+    ]
+   },
+   "hasFilm": false,
+   "brochures": 0
+  },
+  {
+   "id": "artlife",
+   "name": "Artlife",
+   "parent": "NEWGIZA",
+   "region": "west",
+   "regionName": "West Cairo",
+   "place": "Cypher, Twilight and Pixel Labs, NEWGIZA",
+   "status": "Selling",
+   "illustrativeImages": true,
+   "slug": "artlife",
+   "url": "https://mahmoud-elhemaly.onrender.com/artlife/",
+   "intro": "NEWGIZA's branded quarter: Cypher residences operated by Autograph Collection, the Twilight and Spectre hotel-serviced series, The Collection, and Pixel Labs and Sudoku offices.",
+   "facts": [
+    [
+     "Cypher",
+     "10%, 6 years"
+    ],
+    [
+     "Cash",
+     "Up to 25% off"
+    ],
+    [
+     "Service",
+     "Autograph Collection"
+    ],
+    [
+     "Offices",
+     "From 45.2M EGP"
+    ]
+   ],
+   "fromText": null,
+   "highlights": [
+    "Residences operated by Autograph Collection Hotels",
+    "Twilight and Spectre hotel-serviced homes",
+    "Pixel Labs and Sudoku office floors",
+    "Maintenance 8%, Pixel Labs 10%"
+   ],
+   "amenities": [
+    "Operated by Autograph Collection",
+    "Hotel-serviced homes",
+    "Office floors"
+   ],
+   "homes": [
+    {
+     "name": "Cypher one bedroom",
+     "from": 14763000,
+     "to": null
+    },
+    {
+     "name": "Cypher two bedrooms",
+     "from": 19829000,
+     "to": null
+    },
+    {
+     "name": "Cypher three bedrooms",
+     "from": 43581000,
+     "to": null
+    },
+    {
+     "name": "Cypher four bedrooms",
+     "from": 56493000,
+     "to": null
+    },
+    {
+     "name": "Cypher penthouse",
+     "from": 140170000,
+     "to": null
+    }
+   ],
+   "from": 14763000,
+   "fromSource": "Website homes list",
+   "payment": {
+    "destination": "Artlife",
+    "maintenance": {
+     "pct": 8,
+     "due": "12 months before delivery",
+     "extra": "Block 13 Pixel Labs: 10%, due 12 months before delivery"
+    },
+    "source": "Standard Payment Plans, October 18, 2026 (G Developments Commercial Operations Department)",
+    "phases": [
+     {
+      "id": "al-b1b6",
+      "name": "B1 – B6",
+      "official": true,
+      "note": null,
+      "years": 4,
+      "down": [
+       10
+      ],
+      "installments": 16,
+      "delivery": 24,
+      "cash": 20
+     },
+     {
+      "id": "al-pixel",
+      "name": "Block 13 Pixel Labs & Sudoku",
+      "official": true,
+      "note": null,
+      "years": 6,
+      "down": [
+       10
+      ],
+      "installments": 24,
+      "delivery": 48,
+      "cash": 25
+     },
+     {
+      "id": "al-twilight",
+      "name": "Twilight",
+      "official": true,
+      "note": null,
+      "years": 5,
+      "down": [
+       10
+      ],
+      "installments": 20,
+      "delivery": 42,
+      "cash": 22
+     },
+     {
+      "id": "al-spectre",
+      "name": "Spectre Series (TW01–TW03)",
+      "official": true,
+      "note": null,
+      "years": 6,
+      "down": [
+       10
+      ],
+      "installments": 24,
+      "delivery": 42,
+      "cash": 25
+     },
+     {
+      "id": "al-collection",
+      "name": "The Collection",
+      "official": true,
+      "note": null,
+      "years": 4,
+      "down": [
+       10
+      ],
+      "installments": 16,
+      "delivery": 24,
+      "cash": 20
+     },
+     {
+      "id": "al-cypher",
+      "name": "Cypher",
+      "official": true,
+      "note": null,
+      "years": 6,
+      "down": [
+       10
+      ],
+      "installments": 24,
+      "delivery": 42,
+      "cash": 25
+     }
+    ]
+   },
+   "cashOnly": false,
+   "inventory": {
+    "source": "G Developments Primary ATS exports",
+    "asOf": "2026-11-18",
+    "total": 12,
+    "available": 12,
+    "hold": 0,
+    "requested": 0,
+    "from": 45200000,
+    "byType": [
+     {
+      "type": "Office Space",
+      "available": 12,
+      "from": 45200000,
+      "beds": []
+     }
+    ]
+   },
+   "hasFilm": false,
+   "brochures": 0
+  },
+  {
+   "id": "meditown",
+   "name": "Meditown",
+   "parent": "NEWGIZA",
+   "region": "west",
+   "regionName": "West Cairo",
+   "place": "Health district, NEWGIZA",
+   "status": "Selling",
+   "illustrativeImages": true,
+   "slug": "meditown",
+   "url": "https://mahmoud-elhemaly.onrender.com/meditown/",
+   "intro": "Fully finished clinics beside New Giza Health Park, for practitioners who want to own their practice in West Cairo's medical district.",
+   "facts": [
+    [
+     "Clinics",
+     "From 80 m²"
+    ],
+    [
+     "From",
+     "14.4M EGP"
+    ],
+    [
+     "Plan",
+     "Up to 6 years"
+    ],
+    [
+     "Cash",
+     "Up to 22.93% off"
+    ]
+   ],
+   "fromText": "14.4M EGP",
+   "highlights": [
+    "Next to New Giza Health Park",
+    "Blocks B1 – B2 deliver in 6 months",
+    "Blocks B3 – B4 over 6 years",
+    "Maintenance 8%"
+   ],
+   "amenities": [
+    "Beside New Giza Health Park",
+    "Fully finished clinics"
+   ],
+   "homes": [
+    {
+     "name": "Fully finished clinic",
+     "from": 14400000,
+     "to": null
+    }
+   ],
+   "from": 14400000,
+   "fromSource": "Website homes list",
+   "payment": {
+    "destination": "Meditown",
+    "maintenance": {
+     "pct": 8,
+     "due": "6 months before delivery"
+    },
+    "source": "Standard Payment Plans, October 18, 2026 (G Developments Commercial Operations Department)",
+    "phases": [
+     {
+      "id": "md-b12",
+      "name": "Clinics B1 – B2",
+      "official": true,
+      "note": null,
+      "years": 3,
+      "down": [
+       10
+      ],
+      "atDelivery": 10,
+      "installments": 12,
+      "delivery": 6,
+      "cash": 12.56
+     },
+     {
+      "id": "md-b34",
+      "name": "Clinics B3 – B4",
+      "official": true,
+      "note": null,
+      "years": 6,
+      "down": [
+       10
+      ],
+      "installments": 24,
+      "delivery": 12,
+      "cash": 22.93
+     }
+    ]
+   },
+   "cashOnly": false,
+   "inventory": null,
+   "hasFilm": false,
+   "brochures": 0
+  },
+  {
+   "id": "ivy",
+   "name": "IVY",
+   "parent": null,
+   "region": "west",
+   "regionName": "West Cairo",
+   "place": "New Zayed, Cairo–Alexandria Desert Road",
+   "status": "Selling",
+   "illustrativeImages": true,
+   "slug": "ivy",
+   "url": "https://mahmoud-elhemaly.onrender.com/ivy/",
+   "intro": "A low-rise town by Alchemy Architecture around a 17-acre lake, with the IVYPARK sports club and The King's School Canterbury Cairo inside the gates.",
+   "facts": [
+    [
+     "Plan",
+     "5% + 5%, 7 years"
+    ],
+    [
+     "Cash",
+     "30% off"
+    ],
+    [
+     "Delivery",
+     "36 months"
+    ],
+    [
+     "Finish",
+     "Fully finished"
+    ]
+   ],
+   "fromText": null,
+   "highlights": [
+    "17-acre lake and IVYPARK sports club",
+    "The King's School Canterbury Cairo",
+    "Masterplan by Alchemy Architecture",
+    "Six entry gates"
+   ],
+   "amenities": [
+    "17-acre lake",
+    "IVYPARK sports club",
+    "The King's School Canterbury",
+    "Six gated entries"
+   ],
+   "homes": [],
+   "from": 14664000,
+   "fromSource": "Cheapest available unit, G Developments Primary ATS exports (2026-11-18)",
+   "payment": {
+    "destination": "IVY",
+    "maintenance": {
+     "pct": 7,
+     "due": "6 months before delivery"
+    },
+    "source": "Standard Payment Plans, October 18, 2026 (G Developments Commercial Operations Department)",
+    "phases": [
+     {
+      "id": "ivy",
+      "name": "IVY",
+      "official": true,
+      "note": null,
+      "years": 7,
+      "down": [
+       5,
+       5
+      ],
+      "installments": 28,
+      "delivery": 36,
+      "cash": 30
+     },
+     {
+      "id": "ivy-evergreen",
+      "name": "Evergreen",
+      "official": true,
+      "note": null,
+      "years": 7,
+      "down": [
+       5,
+       5
+      ],
+      "installments": 28,
+      "delivery": 48,
+      "cash": 30
+     }
+    ]
+   },
+   "cashOnly": false,
+   "inventory": {
+    "source": "G Developments Primary ATS exports",
+    "asOf": "2026-11-18",
+    "total": 217,
+    "available": 212,
+    "hold": 4,
+    "requested": 1,
+    "from": 14664000,
+    "byType": [
+     {
+      "type": "Fully Finished Apartment",
+      "available": 115,
+      "from": 14664000,
+      "beds": [
+       2,
+       3
+      ]
+     },
+     {
+      "type": "Townhome Apartment",
+      "available": 1,
+      "from": 21414000,
+      "beds": [
+       3
+      ]
+     },
+     {
+      "type": "Townhome + Penthouse",
+      "available": 32,
+      "from": 21414000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Townhome",
+      "available": 41,
+      "from": 22660000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Twin Villa + Penthouse",
+      "available": 5,
+      "from": 23134000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Twin Villa",
+      "available": 13,
+      "from": 26450000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Stand Alone",
+      "available": 5,
+      "from": 39779000,
+      "beds": [
+       4
+      ]
+     }
+    ]
+   },
+   "hasFilm": false,
+   "brochures": 0
+  },
+  {
+   "id": "seashell-rah",
+   "name": "Seashell Ras El Hekma",
+   "parent": null,
+   "region": "coast",
+   "regionName": "North Coast",
+   "place": "KM 194, Ras El Hekma",
+   "status": "Selling",
+   "illustrativeImages": true,
+   "slug": "seashell-ras-el-hekma",
+   "url": "https://mahmoud-elhemaly.onrender.com/seashell-ras-el-hekma/",
+   "intro": "1.6 km of private beach with swimmable lagoons: lagoon chalets, floating chalets, Grand Beach Houses, G Residence lofts and duplexes, and beach villas.",
+   "facts": [
+    [
+     "Plan",
+     "5% + 5%, 8 years"
+    ],
+    [
+     "Cash",
+     "35% off"
+    ],
+    [
+     "Delivery",
+     "36 – 48 months"
+    ],
+    [
+     "Beach",
+     "1.6 km"
+    ]
+   ],
+   "fromText": null,
+   "highlights": [
+    "Floating chalets directly on the lagoon",
+    "Grand Beach Houses and Grand Twinhouses",
+    "G Residence lofts and duplexes",
+    "G Cabanas from 16.2M EGP"
+   ],
+   "amenities": [
+    "1.6 km private beach",
+    "Swimmable lagoons"
+   ],
+   "homes": [],
+   "from": 15484000,
+   "fromSource": "Cheapest available unit, G Developments Primary ATS exports (2026-11-18)",
+   "payment": {
+    "destination": "Seashell Ras El Hekma",
+    "maintenance": {
+     "pct": 8,
+     "due": "12 months before delivery"
+    },
+    "source": "Standard Payment Plans, October 18, 2026 (G Developments Commercial Operations Department)",
+    "phases": [
+     {
+      "id": "sr-p12",
+      "name": "Phase 1 & 2",
+      "official": true,
+      "note": null,
+      "years": 8,
+      "down": [
+       5,
+       5
+      ],
+      "installments": 32,
+      "delivery": 48,
+      "cash": 35
+     },
+     {
+      "id": "sr-lagoon",
+      "name": "Lagoon View",
+      "official": true,
+      "note": null,
+      "years": 8,
+      "down": [
+       5,
+       5
+      ],
+      "installments": 32,
+      "delivery": 36,
+      "cash": 35
+     },
+     {
+      "id": "sr-lagoon2",
+      "name": "Lagoon View 02",
+      "official": true,
+      "note": null,
+      "years": 8,
+      "down": [
+       5,
+       5
+      ],
+      "installments": 32,
+      "delivery": 48,
+      "cash": 35
+     },
+     {
+      "id": "sr-cabins",
+      "name": "Seashell Ras El Hekma Cabins",
+      "official": true,
+      "note": null,
+      "years": 8,
+      "down": [
+       5,
+       5
+      ],
+      "installments": 32,
+      "delivery": 36,
+      "cash": 35
+     },
+     {
+      "id": "sr-gvillas",
+      "name": "G Villas",
+      "official": true,
+      "note": null,
+      "years": 8,
+      "down": [
+       5,
+       5
+      ],
+      "installments": 32,
+      "delivery": 36,
+      "cash": 35
+     },
+     {
+      "id": "sr-gres",
+      "name": "G Residence",
+      "official": true,
+      "note": null,
+      "years": 8,
+      "down": [
+       5,
+       5
+      ],
+      "installments": 32,
+      "delivery": 36,
+      "cash": 35
+     }
+    ]
+   },
+   "cashOnly": false,
+   "inventory": {
+    "source": "G Developments Primary ATS exports",
+    "asOf": "2026-11-18",
+    "total": 1111,
+    "available": 1097,
+    "hold": 13,
+    "requested": 1,
+    "from": 15484000,
+    "byType": [
+     {
+      "type": "Lagoon Chalet 01A",
+      "available": 51,
+      "from": 15484000,
+      "beds": [
+       1,
+       2,
+       3
+      ]
+     },
+     {
+      "type": "Lagoon Chalet 01B",
+      "available": 138,
+      "from": 15484000,
+      "beds": [
+       1,
+       2,
+       3
+      ]
+     },
+     {
+      "type": "Floating Chalet 06",
+      "available": 156,
+      "from": 16089000,
+      "beds": [
+       2
+      ]
+     },
+     {
+      "type": "G Cabana",
+      "available": 33,
+      "from": 16170000,
+      "beds": []
+     },
+     {
+      "type": "Fully Finished Apartment",
+      "available": 32,
+      "from": 18040000,
+      "beds": [
+       2,
+       3
+      ]
+     },
+     {
+      "type": "Lagoon Chalet 03",
+      "available": 73,
+      "from": 18750000,
+      "beds": [
+       2,
+       3
+      ]
+     },
+     {
+      "type": "Quay House",
+      "available": 6,
+      "from": 20387000,
+      "beds": [
+       2
+      ]
+     },
+     {
+      "type": "Duplex",
+      "available": 50,
+      "from": 20549000,
+      "beds": [
+       2,
+       3,
+       4,
+       5
+      ]
+     },
+     {
+      "type": "Lagoon Chalet 02",
+      "available": 132,
+      "from": 25050000,
+      "beds": [
+       3
+      ]
+     },
+     {
+      "type": "Twinchalet",
+      "available": 25,
+      "from": 26013000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Grand Beach House 04 - U",
+      "available": 66,
+      "from": 26500000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Grand Beach House 03 - G",
+      "available": 61,
+      "from": 26500000,
+      "beds": [
+       3
+      ]
+     },
+     {
+      "type": "Grand Beach House 03 - U",
+      "available": 65,
+      "from": 26500000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Grand Beach House 04 - G",
+      "available": 39,
+      "from": 27500000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Townhouse",
+      "available": 7,
+      "from": 28254000,
+      "beds": [
+       3
+      ]
+     },
+     {
+      "type": "Horizon Stand Alone Chalet",
+      "available": 14,
+      "from": 30000000,
+      "beds": [
+       3,
+       4
+      ]
+     },
+     {
+      "type": "Twin Villa",
+      "available": 19,
+      "from": 33512000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Grand Twinhouse",
+      "available": 20,
+      "from": 35000000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Semi Attached Villa",
+      "available": 36,
+      "from": 47000000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Stand Alone",
+      "available": 45,
+      "from": 47124000,
+      "beds": [
+       4,
+       5
+      ]
+     },
+     {
+      "type": "Beach House Deluxe Villa",
+      "available": 10,
+      "from": 48000000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Beach House Grand Villa",
+      "available": 12,
+      "from": 50000000,
+      "beds": [
+       5
+      ]
+     },
+     {
+      "type": "Loft",
+      "available": 7,
+      "from": 58140000,
+      "beds": [
+       3
+      ]
+     }
+    ]
+   },
+   "hasFilm": false,
+   "brochures": 0
+  },
+  {
+   "id": "playa-rah",
+   "name": "Playa Ras El Hekma",
+   "parent": null,
+   "region": "coast",
+   "regionName": "North Coast",
+   "place": "KM 204, Ras El Hekma",
+   "status": "Selling",
+   "illustrativeImages": true,
+   "slug": "playa-ras-el-hekma",
+   "url": "https://mahmoud-elhemaly.onrender.com/playa-ras-el-hekma/",
+   "intro": "240 acres around more than 25 swimmable lagoons. Phase 3 brings the G Serviced Chalets, managed by G Hotel.",
+   "facts": [
+    [
+     "Plan",
+     "5% + 5%, 7 years"
+    ],
+    [
+     "Cash",
+     "32% off"
+    ],
+    [
+     "Delivery",
+     "48 months"
+    ],
+    [
+     "Area",
+     "240 acres"
+    ]
+   ],
+   "fromText": null,
+   "highlights": [
+    "Chalets managed by G Hotel",
+    "More than 25 swimmable lagoons",
+    "One hour from El Alamein airport",
+    "Maintenance 8%"
+   ],
+   "amenities": [
+    "25+ swimmable lagoons",
+    "Managed by G Hotel"
+   ],
+   "homes": [
+    {
+     "name": "G Serviced Chalet, two bedrooms",
+     "from": 15300000,
+     "to": null
+    },
+    {
+     "name": "G Serviced Chalet, three bedrooms",
+     "from": 21700000,
+     "to": null
+    },
+    {
+     "name": "Rooftop chalet, three bedrooms",
+     "from": 21633000,
+     "to": null
+    },
+    {
+     "name": "Penthouse",
+     "from": 24300000,
+     "to": null
+    }
+   ],
+   "from": 15300000,
+   "fromSource": "Website homes list",
+   "payment": {
+    "destination": "Playa Ras El Hekma",
+    "maintenance": {
+     "pct": 8,
+     "due": "12 months before delivery"
+    },
+    "source": "Standard Payment Plans, October 18, 2026 (G Developments Commercial Operations Department)",
+    "phases": [
+     {
+      "id": "pr-all",
+      "name": "All phases",
+      "official": true,
+      "note": null,
+      "years": 7,
+      "down": [
+       5,
+       5
+      ],
+      "installments": 28,
+      "delivery": 48,
+      "cash": 32
+     }
+    ]
+   },
+   "cashOnly": false,
+   "inventory": null,
+   "hasFilm": false,
+   "brochures": 0
+  },
+  {
+   "id": "playa",
+   "name": "Playa Ghazala",
+   "parent": null,
+   "region": "coast",
+   "regionName": "North Coast",
+   "place": "KM 141, Ghazala Bay",
+   "status": "Selling and ready",
+   "illustrativeImages": true,
+   "slug": "playa-ghazala",
+   "url": "https://mahmoud-elhemaly.onrender.com/playa-ghazala/",
+   "intro": "An operating resort on 1.5 km of Ghazala Bay. G Village adds chalets, duplexes and twin villas; Phase 1 and 2 offer standalone villas and townhomes.",
+   "facts": [
+    [
+     "G Village",
+     "10%, 6 years"
+    ],
+    [
+     "Cash",
+     "Up to 30% off"
+    ],
+    [
+     "Delivery",
+     "6 – 36 months"
+    ],
+    [
+     "Beach",
+     "1.5 km"
+    ]
+   ],
+   "fromText": null,
+   "highlights": [
+    "G Village chalets, duplexes and twin villas",
+    "Standalone villas in Phase 1 and 2A",
+    "Playa Cabins delivering in 6 months",
+    "Cable park, promenade and LA7 fitness"
+   ],
+   "amenities": [
+    "1.5 km on Ghazala Bay",
+    "LA7 fitness",
+    "Cable park",
+    "promenade"
+   ],
+   "homes": [],
+   "from": 19500000,
+   "fromSource": "Cheapest available unit, G Developments Primary ATS exports (2026-11-18)",
+   "payment": {
+    "destination": "Playa",
+    "maintenance": {
+     "pct": 8,
+     "due": "12 months before delivery"
+    },
+    "source": "Standard Payment Plans, October 18, 2026 (G Developments Commercial Operations Department)",
+    "phases": [
+     {
+      "id": "pl-1ae",
+      "name": "Phase 1 A, B, C, D & E",
+      "official": true,
+      "note": null,
+      "years": 4,
+      "down": [
+       10
+      ],
+      "installments": 16,
+      "delivery": 18,
+      "cash": 24
+     },
+     {
+      "id": "pl-1f",
+      "name": "Phase 1 F",
+      "official": true,
+      "note": null,
+      "years": 4,
+      "down": [
+       10
+      ],
+      "installments": 16,
+      "delivery": 24,
+      "cash": 24
+     },
+     {
+      "id": "pl-2a",
+      "name": "Phase 2 A",
+      "official": true,
+      "note": null,
+      "years": 4,
+      "down": [
+       10
+      ],
+      "installments": 16,
+      "delivery": 24,
+      "cash": 24
+     },
+     {
+      "id": "pl-2b",
+      "name": "Phase 2 B",
+      "official": true,
+      "note": null,
+      "years": 5,
+      "down": [
+       10
+      ],
+      "installments": 20,
+      "delivery": 28,
+      "cash": 28
+     },
+     {
+      "id": "pl-cabins",
+      "name": "Playa Cabins",
+      "official": true,
+      "note": null,
+      "years": 2,
+      "down": [
+       10
+      ],
+      "installments": 8,
+      "delivery": 6,
+      "cash": 14
+     },
+     {
+      "id": "pl-gvillas",
+      "name": "G Villas",
+      "official": true,
+      "note": null,
+      "years": 2,
+      "down": [
+       25
+      ],
+      "installments": 8,
+      "delivery": 12,
+      "cash": 25
+     },
+     {
+      "id": "pl-gvillage",
+      "name": "G Village",
+      "official": true,
+      "note": null,
+      "years": 6,
+      "down": [
+       10
+      ],
+      "installments": 24,
+      "delivery": 36,
+      "cash": 30
+     }
+    ]
+   },
+   "cashOnly": false,
+   "inventory": {
+    "source": "G Developments Primary ATS exports",
+    "asOf": "2026-11-18",
+    "total": 173,
+    "available": 171,
+    "hold": 2,
+    "requested": 0,
+    "from": 19500000,
+    "byType": [
+     {
+      "type": "Cabin",
+      "available": 4,
+      "from": 19500000,
+      "beds": []
+     },
+     {
+      "type": "Dwellings 02 Shade Chalet",
+      "available": 23,
+      "from": 21394000,
+      "beds": [
+       2
+      ]
+     },
+     {
+      "type": "Loft Apartment",
+      "available": 1,
+      "from": 22350000,
+      "beds": [
+       3
+      ]
+     },
+     {
+      "type": "Dwellings 03 Shade Chalet",
+      "available": 2,
+      "from": 23647000,
+      "beds": [
+       2
+      ]
+     },
+     {
+      "type": "Dwellings 02 Haze Chalet",
+      "available": 32,
+      "from": 24498000,
+      "beds": [
+       3
+      ]
+     },
+     {
+      "type": "Dwellings 03 Haze Chalet",
+      "available": 3,
+      "from": 25651000,
+      "beds": [
+       3
+      ]
+     },
+     {
+      "type": "Dwellings 02 Shadow Chalet",
+      "available": 36,
+      "from": 26107000,
+      "beds": [
+       3
+      ]
+     },
+     {
+      "type": "Twin Villa",
+      "available": 24,
+      "from": 31458000,
+      "beds": [
+       3,
+       4
+      ]
+     },
+     {
+      "type": "Duplex",
+      "available": 4,
+      "from": 36528000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Townhome",
+      "available": 6,
+      "from": 41600000,
+      "beds": [
+       3
+      ]
+     },
+     {
+      "type": "Single Storey Attached-g",
+      "available": 1,
+      "from": 43264000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Single Storey Attached-l",
+      "available": 12,
+      "from": 45318000,
+      "beds": [
+       4
+      ]
+     },
+     {
+      "type": "Stand Alone",
+      "available": 22,
+      "from": 72946000,
+      "beds": [
+       5,
+       6
+      ]
+     },
+     {
+      "type": "Semi Finished Stand Alone",
+      "available": 1,
+      "from": 123500000,
+      "beds": [
+       5
+      ]
+     }
+    ]
+   },
+   "hasFilm": false,
+   "brochures": 0
+  },
+  {
+   "id": "seashell",
+   "name": "Seashell",
+   "parent": null,
+   "region": "coast",
+   "regionName": "North Coast",
+   "place": "KM 135, Sidi Abdelrahman",
+   "status": "Delivered",
+   "illustrativeImages": true,
+   "slug": "seashell",
+   "url": "https://mahmoud-elhemaly.onrender.com/seashell/",
+   "intro": "The original Seashell on Sidi Abdelrahman bay. Remaining developer units sell for cash with handover in three months, alongside a resale desk.",
+   "facts": [
+    [
+     "Terms",
+     "Cash"
+    ],
+    [
+     "Handover",
+     "3 months"
+    ],
+    [
+     "Status",
+     "Delivered"
+    ],
+    [
+     "Resale",
+     "On request"
+    ]
+   ],
+   "fromText": null,
+   "highlights": [
+    "Seashell Walk dining and retail",
+    "Delivered and operating",
+    "Resale chalets and villas",
+    "Maintenance 8%"
+   ],
+   "amenities": [
+    "Seashell Walk dining",
+    "Seashell Walk shops",
+    "Sidi Abdelrahman bay"
+   ],
+   "homes": [],
+   "from": null,
+   "fromSource": null,
+   "payment": {
+    "destination": "Seashell",
+    "maintenance": {
+     "pct": 8,
+     "due": "12 months before delivery"
+    },
+    "source": "Standard Payment Plans, October 18, 2026 (G Developments Commercial Operations Department)",
+    "phases": [
+     {
+      "id": "ss-cash",
+      "name": "All neighborhoods",
+      "official": true,
+      "note": null,
+      "years": 0,
+      "cashOnly": true,
+      "down": [
+       100
+      ],
+      "installments": 0,
+      "delivery": 3,
+      "cash": null
+     }
+    ]
+   },
+   "cashOnly": true,
+   "inventory": null,
+   "hasFilm": false,
+   "brochures": 0
+  },
+  {
+   "id": "ein-bay",
+   "name": "Ein Bay",
+   "parent": null,
+   "region": "sokhna",
+   "regionName": "Ain Sokhna",
+   "place": "KM 34, Suez–Sokhna Road",
+   "status": "Resale and releases",
+   "illustrativeImages": true,
+   "slug": "ein-bay",
+   "url": "https://mahmoud-elhemaly.onrender.com/ein-bay/",
+   "intro": "A year-round Red Sea address stepped into the hillside around The G Einbay Golf Resort, ninety minutes from New Cairo.",
+   "facts": [
+    [
+     "Drive",
+     "90 min from New Cairo"
+    ],
+    [
+     "Season",
+     "Year-round"
+    ],
+    [
+     "Golf",
+     "Einbay Golf Resort"
+    ],
+    [
+     "Units",
+     "On request"
+    ]
+   ],
+   "fromText": null,
+   "highlights": [
+    "Golf and sea views",
+    "Warm winters on the Red Sea",
+    "Chalets, townhouses and villas",
+    "Releases and resale on request"
+   ],
+   "amenities": [
+    "Einbay Golf Resort",
+    "Red Sea, warm all winter"
+   ],
+   "homes": [],
+   "from": null,
+   "fromSource": null,
+   "payment": null,
+   "cashOnly": false,
+   "inventory": null,
+   "hasFilm": false,
+   "brochures": 0
+  }
+ ]
+}

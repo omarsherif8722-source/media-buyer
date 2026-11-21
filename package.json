@@ -1,0 +1,16 @@
+{
+  "name": "g-media-buying-dashboard",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Media-buying dashboard for G Developments campaigns: Meta campaign control, lead quality and targeting.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-local-dev-password} PORT=${PORT:-4180} node server.mjs",
+    "sync": "node scripts/sync-website.mjs",
+    "check": "node scripts/check.mjs"
+  }
+}
