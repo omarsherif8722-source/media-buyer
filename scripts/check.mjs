@@ -145,6 +145,8 @@ await test("page without sign-in shows the sign-in page", async () => {
   const r = await raw("/", { headers: { "Sec-Fetch-Mode": "navigate", Accept: "text/html" } });
   assert.equal(r.status, 401);
   assert.match(r.text, /G Developments · Media buying/);
+  assert.match(r.text, /name="username" type="text" value="media"/, "username filled in");
+  assert.match(r.text, /id="show"/, "show password button");
 });
 await test("API without sign-in → 401", async () => assert.equal((await fetch(U("/api/tree"))).status, 401));
 await test("wrong password refused", async () => {

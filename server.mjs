@@ -181,11 +181,19 @@ input:focus-visible{outline:2px solid #f08a7a;outline-offset:1px;border-color:tr
 button{min-height:50px;margin-top:4px;border:0;border-radius:10px;background:#b3301f;color:#fff;font:inherit;font-weight:600;cursor:pointer}
 button:hover{background:#8f2618}
 button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.pw{position:relative}
+.pw input{padding-right:76px}
+.pw button{position:absolute;right:6px;top:6px;min-height:36px;margin:0;padding:0 12px;background:#2c2c2e;font-size:13px}
+.pw button:hover{background:#3a3a3c}
 .err{margin:0;padding:10px 12px;border:1px solid rgba(235,93,118,.5);border-radius:10px;background:rgba(235,93,118,.1);color:#ffc2cc;font-size:14px}
 .note{margin:16px 0 0;text-align:center;color:#98989d;font-size:12.5px}
 `;
+// The only script on the sign-in page: the Show / Hide password button.
+const LOGIN_JS =
+  'document.getElementById("show").addEventListener("click",function(){var p=document.getElementById("pw");var s=p.type==="password";p.type=s?"text":"password";this.textContent=s?"Hide":"Show";this.setAttribute("aria-pressed",String(s));p.focus();});';
 const LOGIN_CSP =
   `default-src 'none'; style-src 'sha256-${createHash("sha256").update(LOGIN_CSS).digest("base64")}'; ` +
+  `script-src 'sha256-${createHash("sha256").update(LOGIN_JS).digest("base64")}'; ` +
   "img-src 'self'; manifest-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'";
 const LOGIN_ERRORS = {
   wrong: ["Wrong username or password.", "اسم المستخدم أو كلمة المرور غير صحيحة."],
@@ -222,16 +230,18 @@ ${
     : ""
 }
 <label><span>Username <span lang="ar" dir="rtl">اسم المستخدم</span></span>
-<input name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required${error ? "" : " autofocus"}></label>
+<input name="username" type="text" value="${htmlEscape(USER)}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
 <label><span>Password <span lang="ar" dir="rtl">كلمة المرور</span></span>
-<input name="password" type="password" autocomplete="current-password" required></label>
+<div class="pw"><input id="pw" name="password" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" required autofocus><button type="button" id="show" aria-pressed="false" aria-controls="pw">Show</button></div></label>
 <button type="submit">Sign in · <span lang="ar" dir="rtl">دخول</span></button>
 </form>
-<p class="note">This device stays signed in for 30 days.</p>
+<p class="note">This device stays signed in for 30 days.<br>The password is the DASHBOARD_PASSWORD value in the service's Environment settings on Render.</p>
 </main>
+<script>${LOGIN_JS}</script>
 </body>
 </html>
 `;
+const htmlEscape = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const sendLogin = (req, res, status, error) => {
   const body = Buffer.from(loginHtml(error));
   res.writeHead(status, {
@@ -441,8 +451,16 @@ const server = createServer(async (req, res) => {
     const form = new URLSearchParams((await readForm(req)) ?? "");
     // Phones like to capitalise the first letter; the username is not the secret.
     const user = (form.get("username") || "").trim().toLowerCase();
-    if (!(same(user, USER.toLowerCase()) & same((form.get("password") || "").trim(), PASS))) {
+    const typed = (form.get("password") || "").trim();
+    const userOk = same(user, USER.toLowerCase());
+    const passOk = same(typed, PASS);
+    if (!(userOk & passOk)) {
       recordFail(ip);
+      // A note in Render's log (never the password) to tell a typo from a wrong username.
+      console.log(
+        `SIGN-IN REFUSED: ${userOk ? "username ok" : `unknown username "${user.slice(0, 40)}"`}, ` +
+          `${passOk ? "password ok" : `wrong password (typed ${typed.length} characters, ${typed.length === PASS.length ? "same length as" : "different length from"} the saved one)`}`,
+      );
       return sendLogin(req, res, 401, blocked(ip) ? "blocked" : "wrong");
     }
     return redirect(res, "/", { "Set-Cookie": cookieHeader(secure, mintSession(), SESSION_MS / 1000) });
