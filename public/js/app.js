@@ -12,6 +12,11 @@ import * as abtests from "./views/abtests.js";
 import * as report from "./views/report.js";
 import * as trends from "./views/trends.js";
 import * as rules from "./views/rules.js";
+import * as health from "./views/health.js";
+import * as creatives from "./views/creatives.js";
+import * as brief from "./views/brief.js";
+import * as forms from "./views/forms.js";
+import * as payments from "./views/payments.js";
 import * as website from "./views/website.js";
 import * as campaigns from "./views/campaigns.js";
 import * as planner from "./views/planner.js";
@@ -39,24 +44,29 @@ const I = {
 const icon = (k) => raw(`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[k]}</svg>`);
 
 const VIEWS = [
+  { id: "brief", label: "Morning brief", icon: "book", mod: brief },
   { id: "overview", label: "Command Center", icon: "home", mod: overview },
   { id: "geo", label: "Egypt & GCC Map", icon: "map", group: "Intelligence", mod: geo },
   { id: "reach", label: "Who & where", icon: "web", group: "Intelligence", mod: reach },
+  { id: "creatives", label: "Creative library", icon: "msg", group: "Intelligence", mod: creatives },
   { id: "website", label: "Website Funnel", icon: "web", group: "Intelligence", mod: website },
   { id: "campaigns", label: "Campaigns", icon: "ads", group: "Ads", mod: campaigns },
   { id: "trends", label: "Trends & fatigue", icon: "plan", group: "Ads", mod: trends },
   { id: "abtests", label: "A/B tests", icon: "plan", group: "Ads", mod: abtests },
   { id: "rules", label: "Automatic rules", icon: "plan", group: "Ads", mod: rules },
+  { id: "health", label: "Account health", icon: "plan", group: "Ads", mod: health },
+  { id: "payments", label: "Payments", icon: "box", group: "Ads", mod: payments },
   { id: "planner", label: "Budget planner", icon: "plan", group: "Ads", mod: planner },
   { id: "report", label: "Weekly report", icon: "book", group: "Ads", mod: report },
   { id: "leads", label: "Leads & CRM", icon: "leads", group: "Buyers", mod: leads },
+  { id: "forms", label: "Form answers", icon: "leads", group: "Buyers", mod: forms },
   { id: "audiences", label: "Audiences", icon: "target", group: "Buyers", mod: audiences },
   { id: "messages", label: "Messages & Copy", icon: "msg", group: "Content", mod: messages },
   { id: "links", label: "Tracked links", icon: "link", group: "Content", mod: links },
   { id: "inventory", label: "What to sell", icon: "box", group: "Product", mod: inventory },
   { id: "guide", label: "Playbook", icon: "book", group: "Guide", mod: guide },
 ];
-const PHONE_TABS = ["overview", "geo", "campaigns", "leads"];
+const PHONE_TABS = ["brief", "overview", "campaigns", "leads"];
 
 export const PERIODS = [
   ["today", "Today"],
@@ -91,13 +101,16 @@ const ctx = {
     try {
       // Meta's delivery report by region, country, age and gender loads alongside;
       // if it fails, the campaigns still show.
-      const [tree, bd] = await Promise.all([
+      const [tree, bd, health] = await Promise.all([
         get("/api/tree", { range: ctx.period, fresh: force ? 1 : "" }),
         get("/api/breakdowns", { range: ctx.period, fresh: force ? 1 : "" }).then(
           (v) => ({ v }),
           (e) => ({ e }),
         ),
+        // Problems that stop delivery (rejected ads, billing, spending limit).
+        get("/api/health", { fresh: force ? 1 : "" }).catch(() => null),
       ]);
+      ctx.health = health;
       ctx.tree = tree;
       ctx.breakdowns = bd.v || null;
       ctx.breakdownsError = bd.e ? bd.e.message : null;
@@ -164,6 +177,7 @@ function shell() {
         <div class="demo-switch"><span id="demo-label">Demo</span><button type="button" class="switch" role="switch" aria-checked="false" aria-labelledby="demo-label" data-demo-toggle title="Show made-up campaigns and leads"></button></div>
       </header>
       <div class="demo-banner" data-demo-banner hidden><div><b>Demo account active.</b> Full interactive G Developments simulation (6 campaigns, 45 days of daily data, Egypt &amp; GCC geo attribution, website funnel, and 2,000+ graded leads). Switches, budgets and retargeting edits work live in the browser without touching Meta.</div><button class="btn sm" type="button" data-demo-reset>Reset demo</button></div>
+      <a class="health-banner" data-health-banner href="#/health" hidden></a>
       <main class="main" id="main" tabindex="-1"></main>
     </div>
     <nav class="tabbar" aria-label="Sections">
@@ -192,6 +206,13 @@ function render() {
   const demo = isDemo();
   const sw = $("[data-demo-toggle]");
   if (sw) sw.setAttribute("aria-checked", String(demo));
+  const hb = $("[data-health-banner]");
+  if (hb) {
+    const items = (ctx.health?.items || []).filter((x) => x.tone === "bad" || x.tone === "warn");
+    hb.hidden = !items.length || ctx.view === "health";
+    hb.className = `health-banner ${items.some((x) => x.tone === "bad") ? "bad" : "warn"}`;
+    hb.innerHTML = items.length ? html`<b>${items.length} problem${items.length > 1 ? "s" : ""} may be stopping your ads:</b> ${items.slice(0, 2).map((x) => `${x.problem}${x.level !== "account" ? ` (${x.name})` : ""}`).join(" · ")}${items.length > 2 ? " · …" : ""} <span class="hb-go">See account health →</span>`.s : "";
+  }
   const banner = $("[data-demo-banner]");
   if (banner) banner.hidden = !demo;
   document.documentElement.classList.toggle("is-demo", demo);
@@ -284,6 +305,7 @@ async function switchDemo(on) {
   reloadLeads();
   ctx.tree = null;
   ctx.breakdowns = null;
+  ctx.health = null;
   ctx.treeError = null;
   ctx.settings = null;
   render();

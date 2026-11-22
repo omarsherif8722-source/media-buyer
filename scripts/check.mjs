@@ -67,7 +67,9 @@ const graph = createServer(async (req, res) => {
     if (path === "/888/events") return send(200, { events_received: 1 });
     return send(200, { success: true });
   }
-  if (path === "/act_123") return send(200, { id: "act_123", name: "G Developments · Test", currency: "EGP", timezone_name: "Africa/Cairo", account_status: 1, amount_spent: "1234500" });
+  if (path === "/act_123") return send(200, { id: "act_123", name: "G Developments · Test", currency: "EGP", timezone_name: "Africa/Cairo", account_status: 1, amount_spent: "1234500", spend_cap: "1300000", balance: "245000", is_prepay_account: false, funding_source_details: { id: "9", display_string: "Visa *0000", type: 1 } });
+  if (params.get("effective_status") && path === "/act_123/ads") return send(200, { data: [{ id: NUM.a1, name: "film-15s-price", adset_id: NUM.s1, campaign_id: NUM.c1, effective_status: "DISAPPROVED", issues_info: [{ error_summary: "Ad not approved: housing claims" }] }] });
+  if (params.get("effective_status") && (path === "/act_123/campaigns" || path === "/act_123/adsets")) return send(200, { data: [] });
   if (path === "/act_123/campaigns") return send(200, { data: [withNum(objects.c1), withNum(objects.c2)] });
   if (path === "/act_123/adsets") return send(200, { data: [withNum(objects.s1)] });
   if (path === "/act_123/ads") return send(200, { data: [withNum(objects.a1)] });
@@ -237,6 +239,27 @@ await test("day-by-day results per ad, and daily totals on the campaign tree", a
   assert.equal(r.data.rows[0].date, "2026-11-14");
   const t = await api("/api/tree?range=last_14d");
   assert.ok(Array.isArray(t.data.daily), "tree carries real daily totals");
+});
+await test("account health: rejected ad and nearly-used spending limit, with fixes", async () => {
+  const r = await api("/api/health?fresh=1");
+  assert.equal(r.status, 200, r.text);
+  const ad = r.data.items.find((x) => x.level === "ad");
+  assert.equal(ad.status, "DISAPPROVED");
+  assert.match(ad.reason, /housing claims/);
+  assert.ok(ad.fix.length > 20);
+  const cap = r.data.items.find((x) => /spending limit/i.test(x.problem));
+  assert.ok(cap, "95% of the limit used is flagged");
+  assert.equal(r.data.account.spendCap, 13000);
+});
+await test("payments: owed, limit and method in pounds, spend by month and campaign", async () => {
+  const r = await api("/api/payments?fresh=1");
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.data.account.owed, 2450);
+  assert.equal(r.data.account.amountSpent, 12345);
+  assert.equal(r.data.account.spendCap, 13000);
+  assert.deepEqual(r.data.account.method, { display: "Visa *0000", type: "Credit or debit card" });
+  assert.ok(r.data.months.length >= 1);
+  assert.match(r.data.billingUrl, /asset_id=123/);
 });
 await test("interest search", async () => assert.equal((await api("/api/search?type=interest&q=real")).data[0].name, "Real estate investing"));
 await test("custom audiences", async () => assert.equal((await api("/api/audiences")).data.length, 1));
@@ -533,6 +556,36 @@ await test("rule presets build Meta's format, and read back in plain words", asy
   assert.match(d.text, /once a day: change ad set budget \+15% \(cap EGP 1,500\) for ad sets \(last 7 days\) where form leads > 9 and cost per lead < EGP 175/);
 });
 
+const cr = await import(join(root, "public", "js", "views", "creatives.js"));
+const fm = await import(join(root, "public", "js", "views", "forms.js"));
+const pay = await import(join(root, "public", "js", "views", "payments.js"));
+const br = await import(join(root, "public", "js", "views", "brief.js"));
+await test("creative angles are read from the ad's words", async () => {
+  assert.deepEqual(cr.suggestAngles("From 7.88M EGP, 5% down and 8 years to pay"), ["price", "plan"]);
+  assert.ok(cr.suggestAngles("One, two or three bedrooms, fully finished with A/C").includes("homes"));
+  assert.ok(cr.suggestAngles("Serviced apartments, hotel-style concierge").includes("service"));
+  assert.ok(cr.suggestAngles("A quiet town around a 17-acre lake").includes("view"));
+  assert.ok(cr.suggestAngles("مقدم 5% وتقسيط على 8 سنين").includes("plan"));
+  assert.equal(cr.formatOf({ name: "school-carousel", creative: {} }), "Carousel");
+  assert.equal(cr.formatOf({ name: "lake-film-15s", creative: {} }), "Video");
+});
+await test("form answers: budget and timing signals", async () => {
+  assert.equal(fm.questionType("what_budget_do_you_have_in_mind?"), "budget");
+  assert.equal(fm.questionType("when_are_you_planning_to_buy?"), "timing");
+  assert.deepEqual(fm.signals({ answers: { "what_budget_do_you_have_in_mind?": "Below 7.9M EGP", "when_are_you_planning_to_buy?": "Now" } }, catalog), { budgetOk: false, soon: true, cashMismatch: false });
+  const ss = fm.signals({ project: "seashell", answers: { "how_would_you_like_to_pay?": "No, I need installments" } }, catalog);
+  assert.equal(ss.cashMismatch, true, "Seashell (Sidi Abdelrahman) is sold for cash only");
+  const ng = fm.signals({ project: "newgiza", answers: { "how_would_you_like_to_pay?": "No, I need installments" } }, catalog);
+  assert.equal(ng.cashMismatch, false, "NEWGIZA also sells parking and storage on installments");
+});
+await test("payments forecast: spent so far plus the recent daily rate", async () => {
+  const f = pay.forecast({ months: [{ month: "2026-11", spend: 100000 }], last7: Array.from({ length: 7 }, () => ({ spend: 5000 })) }, new Date("2026-11-21T10:00:00"));
+  assert.equal(f.spent, 100000);
+  assert.equal(f.perDay, 5000);
+  assert.equal(f.left, 10);
+  assert.equal(f.total, 150000);
+});
+
 console.log("Demo mode");
 const { createDemo } = await import(join(root, "public", "js", "demo.js"));
 const demo = createDemo(catalog);
@@ -646,6 +699,27 @@ await test("demo copies and new ad versions start switched off", async () => {
   assert.equal(t2.campaigns[1].name, "Campaign copy");
   assert.equal(t2.campaigns[1].status, "PAUSED");
   demo.reset();
+});
+await test("demo: health, payments, creative library, form answers and the morning brief", async () => {
+  const h = await demo.get("/api/health");
+  assert.ok(h.items.some((x) => x.status === "DISAPPROVED"), "a rejected demo ad");
+  const p = await demo.get("/api/payments");
+  const t30 = await demo.get("/api/tree", { range: "maximum" });
+  const life = t30.campaigns.reduce((s, c) => s + (c.m?.spend || 0), 0);
+  assert.ok(Math.abs(p.account.amountSpent - life) < 5, "lifetime spend matches the demo account");
+  assert.ok(Math.abs(p.months.reduce((s, m) => s + m.spend, 0) - life) < 5, "months add up");
+  const t = await demo.get("/api/tree", { range: "last_30d" });
+  const lib = cr.library(t, demo.leads(), catalog);
+  assert.ok(lib.length >= 10 && lib.every((r) => r.angles.length >= 1), "every demo ad gets an angle");
+  const ang = cr.byGroup(lib, (r) => r.angles);
+  assert.ok(ang.some((x) => x.valid > 0));
+  const camps = fm.byCampaign(demo.leads(), catalog);
+  assert.ok(camps.length >= 3 && camps[0].budgetAsked > 0);
+  const y = await demo.get("/api/tree", { range: "yesterday" });
+  const w = await demo.get("/api/tree", { range: "last_7d" });
+  const b = br._test.buildBrief({ y, w, rh: [], pay: p }, demo.leads(), h);
+  assert.ok(b.y.spend > 0 && b.todo.length >= 1);
+  assert.match(br._test.whatsappText(b), /Morning brief/);
 });
 await test("demo 'get new leads' brings Meta-shaped leads", async () => {
   const r = await demo.get("/api/leads", { since: 0 });

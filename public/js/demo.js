@@ -180,7 +180,8 @@ function build(catalog) {
       const s = { id: nid(), name: sp.name, status: "ACTIVE", budget: sp.budget, sp, targeting: JSON.parse(JSON.stringify(sp.t)), ads: [] };
       const cities = (sp.t.geo_locations?.cities || []).map((x) => x.name).filter(Boolean);
       for (const [adName, share, ctrX, freqX] of sp.ads) {
-        const a = { id: nid(), name: adName, status: "ACTIVE", freqX, rows: [] };
+        const a = { id: nid(), name: adName, status: "ACTIVE", freqX, rows: [], ...(DEMO_CREATIVE[adName] || {}) };
+        if (adName === "beach-carousel") a.issue = { status: "DISAPPROVED", reason: "Ad wasn't approved: the text implies a guaranteed return on investment, which isn't allowed for property ads (demo example)." };
         let carry = r();
         for (let i = 0; i < DAYS; i += 1) {
           const active = !cp.pausedDaysAgo || i < DAYS - 1 - cp.pausedDaysAgo;
@@ -285,7 +286,15 @@ function makeLead({ r, no, created, now, c, campaign, set, ad, from, city }) {
     lead.budget = Math.round((from * (0.3 + r() * 0.45)) / 100000) * 100000;
     lead.notes = BAD[1][2];
   } else if (BAD.some(([s]) => s === stage)) lead.notes = BAD.find(([s]) => s === stage)[2];
-  if (!c.whatsapp) lead.answers = { "what_city_do_you_live_in?": city, "when_are_you_planning_to_buy?": valid ? "Within 3 months" : "Later than 6 months", "how_would_you_like_to_pay?": lead.pay === "cash" ? "Cash" : "Installments" };
+  if (!c.whatsapp) {
+    // What the person picked on the form. Mostly in line with what the call found, not always.
+    const m = (v) => `${Number((v / 1e6).toFixed(1))}M`;
+    const fits = valid ? r() < 0.88 : stage === "low_budget" ? r() < 0.15 : r() < 0.5;
+    const budget = fits ? (r() < 0.6 ? `${m(from)} – ${m(from * 1.5)} EGP` : `${m(from * 1.5)} – ${m(from * 2.5)} EGP`) : `Below ${m(from)} EGP`;
+    const soon = valid ? r() < 0.75 : r() < 0.3;
+    const timing = soon ? (r() < 0.4 ? "Now" : "Within 3 months") : r() < 0.5 ? "3 to 6 months" : "Later than 6 months";
+    lead.answers = { "what_budget_do_you_have_in_mind?": budget, "when_are_you_planning_to_buy?": timing, "how_would_you_like_to_pay?": lead.pay === "cash" ? "Cash" : "Installments", "what_city_do_you_live_in?": city };
+  }
   return lead;
 }
 
@@ -382,6 +391,29 @@ function wearOut(adName, i) {
   if (!k) return 1;
   return 1 - k * Math.min(1, Math.max(0, (i - (DAYS - 16)) / 15));
 }
+
+// Hooks, headlines and formats of the demo ads (for the creative library).
+const DEMO_CREATIVE = {
+  "film-15s-price": { format: "VIDEO", body: "From 7.88M EGP, 5% down and 8 years to pay. Serviced apartments above The Boulevard.", title: "Krypton · from 7.88M EGP" },
+  "carousel-homes": { format: "CAROUSEL", body: "One, two or three bedrooms, fully finished with A/C. Swipe to pick yours.", title: "Choose your home at Krypton" },
+  "static-price-plan": { format: "IMAGE", body: "5% down, 5% after 3 months, then 8 years of equal installments.", title: "5% down · 8 years" },
+  "reminder-price-plan": { format: "IMAGE", body: "Still thinking about Krypton? The 5% down plan is open this month.", title: "5% down · 8 years" },
+  "film-15s-price-gulf": { format: "VIDEO", body: "A Cairo home that's looked after while you're abroad. From 7.88M EGP.", title: "Your home in NEWKAIRO" },
+  "wa-film-15s-krypton": { format: "VIDEO", body: "Hotel-style serviced living on The Boulevard. Chat with an advisor on WhatsApp.", title: "Krypton on WhatsApp" },
+  "wa-static-5pct-down": { format: "IMAGE", body: "5% down payment, 8 years to pay. Message us for the plan.", title: "5% down · 8 years" },
+  "wa-gulf-serviced-15s": { format: "VIDEO", body: "Serviced apartment in Cairo, managed while you're in the Gulf.", title: "Serviced living in Cairo" },
+  "wa-ivy-lake-15s": { format: "VIDEO", body: "A quiet town around a 17-acre lake in New Zayed.", title: "IVY · lake living" },
+  "wa-kings-school-chat": { format: "IMAGE", body: "The King's School Canterbury Cairo inside the gates. Ask about family homes.", title: "A British school at your door" },
+  "wa-lagoon-chalet-15s": { format: "VIDEO", body: "Lagoon chalets at Ras El Hekma. Chat with us about this summer.", title: "Lagoon chalets" },
+  "lake-film-15s": { format: "VIDEO", body: "Walk around the 17-acre lake at IVY, New Zayed.", title: "IVY · a town around a lake" },
+  "school-carousel": { format: "CAROUSEL", body: "The King's School Canterbury Cairo and IVYPARK sports club inside the gates.", title: "School and club inside IVY" },
+  "townhouse-tour-20s": { format: "VIDEO", body: "Tour a fully finished townhouse at Neon Views. From 19.23M EGP, 5% down.", title: "Neon Views · from 19.23M EGP" },
+  "villa-carousel": { format: "CAROUSEL", body: "Townhouses and villas with gardens around the lakes.", title: "Villas at Neon Views" },
+  "lagoon-static": { format: "IMAGE", body: "Chalets on the lagoon at Seashell Ras El Hekma, private beach.", title: "Seashell Ras El Hekma" },
+  "beach-carousel": { format: "CAROUSEL", body: "Guaranteed rental returns every summer on the beach.", title: "Earn every summer" },
+  "lagoon-film-15s": { format: "VIDEO", body: "Lagoon chalets, 5% down and 8 years. 35% off for cash.", title: "Lagoon chalets · 35% off cash" },
+  "fairway-film-20s": { format: "VIDEO", body: "Villas on the 18-hole golf course at NEWKAIRO.", title: "Golf Views villas" },
+};
 
 function demoDaily(state, range, since, until) {
   const [a, b] = rangeIdx(range, since, until);
@@ -546,7 +578,7 @@ export function createDemo(catalog) {
           const ads = s.ads.map((a) => {
             const t = sumRows(a.rows, idx);
             st = add(st, t);
-            return { id: a.id, name: a.name, status: a.status, effectiveStatus: eff(a.status, s.status !== "ACTIVE" || c.status !== "ACTIVE", s.status !== "ACTIVE" ? "ADSET" : "CAMPAIGN"), created: null, creative: { id: `${a.id}9`, thumb: null, title: a.title || null, body: a.body || null, type: "VIDEO" }, m: toMetrics(t, s.sp.f * a.freqX, idx) };
+            return { id: a.id, name: a.name, status: a.status, effectiveStatus: a.issue && a.status === "ACTIVE" ? a.issue.status : eff(a.status, s.status !== "ACTIVE" || c.status !== "ACTIVE", s.status !== "ACTIVE" ? "ADSET" : "CAMPAIGN"), created: null, creative: { id: `${a.id}9`, thumb: null, title: a.title || null, body: a.body || null, type: a.format || "VIDEO" }, m: toMetrics(t, s.sp.f * a.freqX, idx) };
           });
           ct = add(ct, st);
           fSum += s.sp.f * st.imps;
@@ -588,6 +620,47 @@ export function createDemo(catalog) {
       }
       case "/api/audiences":
         return wait(Object.values(AUD));
+      case "/api/payments": {
+        const byMonth = {};
+        const byCamp = {};
+        const daily = {};
+        const thisMonth = ymd(dayIso(DAYS - 1)).slice(0, 7);
+        let life = 0;
+        for (const c of state.campaigns)
+          for (const st of c.sets)
+            for (const a of st.ads)
+              a.rows.forEach((x, i) => {
+                if (!x) return;
+                const d = ymd(dayIso(i));
+                life += x.spend;
+                byMonth[d.slice(0, 7)] = (byMonth[d.slice(0, 7)] || 0) + x.spend;
+                if (d.slice(0, 7) === thisMonth) byCamp[c.id] = { id: c.id, name: c.name, spend: (byCamp[c.id]?.spend || 0) + x.spend };
+                if (i >= DAYS - 8 && i <= DAYS - 2) daily[d] = (daily[d] || 0) + x.spend;
+              });
+        const r2 = (v) => Math.round(v * 100) / 100;
+        const last3 = Object.entries(daily).sort().slice(-3).reduce((t, [, v]) => t + v, 0);
+        return wait({
+          fetchedAt: new Date().toISOString(),
+          demo: true,
+          currency: "EGP",
+          account: { name: "Demo account (made-up data)", owed: r2(last3), amountSpent: r2(life), spendCap: Math.ceil((life * 1.08) / 10000) * 10000, prepay: false, method: { display: "Card ending 0000 (demo)", type: "Credit or debit card" } },
+          months: Object.entries(byMonth).sort().map(([month, spend]) => ({ month, spend: r2(spend) })),
+          thisMonth: Object.values(byCamp).map((x) => ({ ...x, spend: r2(x.spend) })).sort((a, b) => b.spend - a.spend),
+          last7: Object.entries(daily).sort().map(([date, spend]) => ({ date, spend: r2(spend) })),
+          billingUrl: "https://business.facebook.com/billing_hub/payment_activity",
+        });
+      }
+      case "/api/health": {
+        const items = [];
+        const life = state.campaigns.reduce((t, c) => t + c.sets.reduce((u, st) => u + st.ads.reduce((v, a) => v + a.rows.reduce((w, x) => w + (x ? x.spend : 0), 0), 0), 0), 0);
+        const cap = Math.ceil((life * 1.08) / 10000) * 10000;
+        items.push({ tone: "warn", level: "account", id: "act_demo", name: "Demo account (made-up data)", problem: `Account spending limit ${Math.round((life / cap) * 100)}% used`, fix: `Raise or reset the account spending limit in Billing (limit ${cap.toLocaleString("en-US")} EGP). Ads stop at the limit.` });
+        for (const c of state.campaigns)
+          for (const st of c.sets)
+            for (const a of st.ads)
+              if (a.issue && a.status === "ACTIVE") items.push({ tone: "bad", level: "ad", id: a.id, name: a.name, campaignId: c.id, status: a.issue.status, problem: "Rejected by Meta", reason: a.issue.reason, fix: "Read Meta's reason, fix the words or image (no promised returns, no misleading prices, housing rules), then request another review from Account Quality or duplicate the ad with the fix." });
+        return wait({ checkedAt: new Date().toISOString(), demo: true, account: { name: "Demo account (made-up data)", status: 1, currency: "EGP", spendCap: cap, amountSpent: Math.round(life) }, items });
+      }
       case "/api/audit":
         return wait(state.audit);
       case "/api/rules":

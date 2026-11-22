@@ -409,6 +409,20 @@ async function handleApi(req, res, urlPath) {
         treeCache.set(key, { at: Date.now(), data });
         return sendJson(res, 200, data);
       }
+      case "GET /api/payments": {
+        const hit = treeCache.get("payments");
+        if (hit && Date.now() - hit.at < TREE_MS && q.get("fresh") !== "1") return sendJson(res, 200, { ...hit.data, cached: true });
+        const data = await meta.payments();
+        treeCache.set("payments", { at: Date.now(), data });
+        return sendJson(res, 200, data);
+      }
+      case "GET /api/health": {
+        const hit = treeCache.get("health");
+        if (hit && Date.now() - hit.at < TREE_MS && q.get("fresh") !== "1") return sendJson(res, 200, { ...hit.data, cached: true });
+        const data = await meta.health();
+        treeCache.set("health", { at: Date.now(), data });
+        return sendJson(res, 200, data);
+      }
       case "POST /api/copy":
         treeCache.clear();
         return sendJson(res, 200, await meta.copyObject(String(body.kind || ""), String(body.id || ""), body));
