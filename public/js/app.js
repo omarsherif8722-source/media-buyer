@@ -1,6 +1,6 @@
 // App shell: sidebar and phone tab bar, routing, the date range, and loading
 // data from the server (settings + Meta campaigns) and the website catalog.
-import { html, raw, $, toast, setCurrency } from "./ui.js";
+import { html, raw, $, toast, setCurrency, promptDialog } from "./ui.js";
 import { get, setDemoBackend } from "./api.js";
 import { load, save, loadGlobal, saveGlobal, isDemo, setDemo, clearDemo } from "./store.js";
 import { allLeads, onLeads, reloadLeads, replaceAll } from "./model.js";
@@ -148,6 +148,19 @@ function waitingCount() {
 
 const G_MARK = raw('<svg viewBox="0 0 32 33" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M17.06 19.61V14.89H30.83V31.51H26.58L25.76 27.44C23.51 30.65 20.18 32.21 15.72 32.21C11.26 32.21 7.71 30.73 5.03 27.79C2.34 24.85 1 20.95 1 16.1C1 11.26 2.34 7.36 5.11 4.37C7.84 1.47 11.56 0 16.24 0C20.09 0 23.29 1 25.89 2.94C28.4 4.93 29.96 7.58 30.48 10.95H24.46C24.03 9.13 23.08 7.71 21.61 6.67C20.13 5.63 18.36 5.11 16.28 5.11C13.42 5.11 11.22 6.1 9.57 8.05C7.93 10.04 7.1 12.73 7.1 16.1C7.1 19.52 7.93 22.21 9.62 24.16C11.26 26.15 13.55 27.1 16.5 27.1C18.79 27.1 20.78 26.41 22.43 25.02C24.07 23.64 24.94 21.86 25.11 19.61H17.06Z"/></svg>');
 
+const DEFAULT_CLIENTS = [
+  { id: "mahmoud-gdev", name: "Mahmoud Elhemaly", brand: "G Developments", portalUrl: "./client/" },
+];
+
+function getClients() {
+  return loadGlobal("agency.clients", DEFAULT_CLIENTS);
+}
+function getActiveClient() {
+  const list = getClients();
+  const id = loadGlobal("agency.activeClient", "mahmoud-gdev");
+  return list.find((c) => c.id === id) || list[0];
+}
+
 function shell() {
   const groups = [];
   for (const v of VIEWS) {
@@ -156,10 +169,30 @@ function shell() {
     groups[groups.length - 1].items.push(v);
   }
   const theme = loadGlobal("theme", "system");
+  const clients = getClients();
+  const activeClient = getActiveClient();
   return html`
   <div class="shell">
     <nav class="side" aria-label="Sections">
-      <div class="brand"><div class="brand-mark" aria-hidden="true">${G_MARK}</div><div><b>G Developments</b><span>Media Command Center</span></div></div>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">${G_MARK}</div>
+        <div>
+          <b>Omar Sherif</b>
+          <span>Media Buying Command Center</span>
+        </div>
+      </div>
+      <div style="padding:8px;border-radius:10px;background:var(--bg-2);border:1px solid var(--line);display:grid;gap:6px">
+        <div class="row between">
+          <span class="tiny muted" style="font-weight:650;text-transform:uppercase;letter-spacing:0.04em">Client Account</span>
+          <button class="btn sm ghost" type="button" data-add-client style="min-height:22px;padding:1px 6px;font-size:11px">+ Add Client</button>
+        </div>
+        <select class="input" data-client-switch aria-label="Active Client Account" style="min-height:30px;padding:3px 8px;font-weight:650;font-size:12.5px">
+          ${clients.map((c) => html`<option value="${c.id}" ${c.id === activeClient.id ? raw("selected") : ""}>${c.name} · ${c.brand}</option>`)}
+        </select>
+        <a class="btn sm primary" href="./client/" target="_blank" rel="noopener" style="width:100%;justify-content:center">
+          Open Client Portal (${activeClient.name.split(" ")[0]}) ↗
+        </a>
+      </div>
       ${groups.map(
         (g) => html`<div class="nav-group">${g.name ? html`<span>${g.name}</span>` : ""}<div class="nav">${g.items.map(
           (v) => html`<a href="#/${v.id}" data-nav="${v.id}">${icon(v.icon)}<span>${v.label}</span>${v.id === "leads" ? html`<span class="count" data-waiting hidden></span>` : ""}</a>`,
@@ -172,8 +205,9 @@ function shell() {
     </nav>
     <div class="content">
       <header class="appbar">
-        <div class="appbar-brand"><div class="brand-mark" aria-hidden="true">${G_MARK}</div><b>Media Command</b></div>
+        <div class="appbar-brand"><div class="brand-mark" aria-hidden="true">${G_MARK}</div><b>Omar Sherif · Media Buyer</b></div>
         <div class="appbar-status small" data-appbar-status></div>
+        <a class="btn sm" href="./client/" target="_blank" rel="noopener" title="Open Mahmoud Elhemaly's Client Lead & Results Portal">Client Portal (Mahmoud) ↗</a>
         <div class="demo-switch"><span id="demo-label">Demo</span><button type="button" class="switch" role="switch" aria-checked="false" aria-labelledby="demo-label" data-demo-toggle title="Show made-up campaigns and leads"></button></div>
       </header>
       <div class="demo-banner" data-demo-banner hidden><div><b>Demo account active.</b> Full interactive G Developments simulation (6 campaigns, 45 days of daily data, Egypt &amp; GCC geo attribution, website funnel, and 2,000+ graded leads). Switches, budgets and retargeting edits work live in the browser without touching Meta.</div><button class="btn sm" type="button" data-demo-reset>Reset demo</button></div>
@@ -266,6 +300,39 @@ function bindShell() {
       saveGlobal("theme", next);
       applyTheme();
       t.textContent = `Theme: ${next}`;
+    }
+    const addClientBtn = e.target.closest("[data-add-client]");
+    if (addClientBtn) {
+      promptDialog({
+        title: "Add New Client Account (Omar Sherif Agency)",
+        body: "Enter the client and brand name (e.g. 'Ahmed Mansour · Palm Hills' or 'Karim Tarek · Mountain View')",
+        label: "Client · Developer Brand",
+        value: "",
+        ok: "Add Client Account",
+      }).then((val) => {
+        if (!val || !val.trim()) return;
+        const parts = val.split("·").map((s) => s.trim());
+        const name = parts[0] || val.trim();
+        const brand = parts[1] || "Real Estate Advisory";
+        const id = name.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now().toString(36).slice(-3);
+        const list = getClients();
+        list.push({ id, name, brand, portalUrl: "./client/" });
+        saveGlobal("agency.clients", list);
+        saveGlobal("agency.activeClient", id);
+        document.getElementById("app").innerHTML = shell().s;
+        render();
+        toast(`Switched to client account: ${name} (${brand})`, "good");
+      });
+    }
+  });
+  document.addEventListener("change", (e) => {
+    if (e.target.matches("[data-client-switch]")) {
+      const id = e.target.value;
+      saveGlobal("agency.activeClient", id);
+      const active = getActiveClient();
+      document.getElementById("app").innerHTML = shell().s;
+      render();
+      toast(`Active client: ${active.name} · ${active.brand}`, "good");
     }
   });
   window.addEventListener("hashchange", () => {
