@@ -504,6 +504,63 @@ function demoBreakdowns(state, range, campaignId, since, until) {
   };
 }
 
+// Website tracking: what the Pixel and the Conversions API would show for the
+// demo account's last 7 days of landing page views (made-up, like the rest).
+function demoTracking(state, catalog) {
+  const r = rng(7311);
+  let lpv = 0;
+  const ads = [];
+  for (const c of state.campaigns)
+    for (const s of c.sets)
+      for (const a of s.ads) {
+        const v = a.rows.slice(-7).reduce((t, x) => t + (x?.lpv || 0), 0);
+        lpv += v;
+        if (v > 0 && !c.name.includes("WhatsApp")) ads.push({ a, c, w: v });
+      }
+  const k = (x) => Math.round(lpv * x);
+  const byEvent = { PageView: k(1.55), ViewContent: k(0.92), CustomizeProduct: k(0.38), Contact: k(0.12), Lead: k(0.031), BrochureDownload: k(0.02) };
+  const total = ads.reduce((t, x) => t + x.w, 0) || 1;
+  const pick = () => {
+    let x = r() * total;
+    for (const o of ads) if ((x -= o.w) <= 0) return o;
+    return ads[0];
+  };
+  const SITE = [["Page view", "PageView", 0.46], ["Project page", "ViewContent", 0.24], ["Payment plan opened", "CustomizeProduct", 0.12], ["Krypton layout viewed", "ViewContent", 0.08], ["WhatsApp click", "Contact", 0.06], ["Call click", "Contact", 0.02], ["Brief sent", "Lead", 0.02]];
+  const now = Date.now();
+  const events = [];
+  for (let i = 0; i < 120 && ads.length; i += 1) {
+    let x = r();
+    const [event, metaEvent] = SITE.find(([, , w]) => (x -= w) <= 0) || SITE[0];
+    const fromAd = r() < 0.72;
+    const o = pick();
+    const slug = catalog?.projects?.find((p) => p.id === o.c.project)?.slug || o.c.project || "krypton";
+    events.push({
+      id: `we_demo${i}`,
+      at: new Date(now - i * (4 + r() * 20) * 60000).toISOString(),
+      event,
+      metaEvent,
+      project: o.c.project || null,
+      page: `/${slug}/`,
+      place: /WhatsApp|Call/.test(event) ? ["Floating button", "Project details", "Header"][Math.floor(r() * 3)] : null,
+      utmSource: fromAd ? (r() < 0.7 ? "fb" : "ig") : null,
+      utmCampaign: fromAd ? o.c.name : null,
+      utmContent: fromAd ? o.a.name : null,
+      ref: fromAd ? `W-${BigInt(o.a.id).toString(36).toUpperCase()}` : "WEB",
+      adId: fromAd ? o.a.id : null,
+      sent: true,
+      test: false,
+    });
+  }
+  const received = events.length * 9;
+  return {
+    demo: true,
+    capi: { forwarding: true, off: false, datasetSet: true, testCode: false, origins: ["https://mahmoud-elhemaly.onrender.com"], queued: 0, since: new Date(now - 26 * 3600000).toISOString(), received, sent: received - 3, test: 0, kept: 3, failed: 0, byEvent: { PageView: Math.round(received * 0.52), ViewContent: Math.round(received * 0.3), CustomizeProduct: Math.round(received * 0.1), Contact: Math.round(received * 0.06), Lead: Math.round(received * 0.02) }, lastSentAt: new Date(now - 90000).toISOString(), lastError: null, lastErrorAt: null },
+    pixel: { id: "000000000000000", name: "Demo Pixel (made-up)", lastFired: new Date(now - 60000).toISOString(), days: 7, byEvent, statsError: null },
+    pixelError: null,
+    events,
+  };
+}
+
 export function createDemo(catalog) {
   let state = build(catalog);
   const find = (id) => {
@@ -669,6 +726,8 @@ export function createDemo(catalog) {
         return wait((state.ruleHistory ||= []));
       case "/api/web-events":
         return wait({ events: [] });
+      case "/api/tracking":
+        return wait(demoTracking(state, catalog));
       case "/api/leads": {
         const r = rng(Date.now() & 0xffff);
         const live = state.campaigns.filter((c) => c.status === "ACTIVE" && !c.name.includes("WhatsApp"));

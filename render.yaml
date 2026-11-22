@@ -24,5 +24,9 @@ services:
         sync: false
       - key: META_DATASET_ID
         sync: false
+      - key: WEBSITE_ORIGINS
+        value: https://mahmoud-elhemaly.onrender.com
+      - key: META_TEST_EVENT_CODE
+        sync: false
       - key: META_READ_ONLY
         value: "0"

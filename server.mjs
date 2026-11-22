@@ -12,6 +12,7 @@ import { brotliCompress, constants as zc, gzip } from "node:zlib";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import * as meta from "./lib/meta.mjs";
+import * as collect from "./lib/collect.mjs";
 
 const ROOT = resolve(new URL(".", import.meta.url).pathname, "public");
 const PORT = Number(process.env.PORT) || 4173;
@@ -336,14 +337,14 @@ const sendJson = (res, status, data) => {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "Content-Length": body.length });
   res.end(body);
 };
-/** The posted JSON (max 64 KB), or null. */
-const readJson = (req) =>
+/** The posted JSON (max 64 KB, or `max` bytes), or null. */
+const readJson = (req, max = 64 * 1024) =>
   new Promise((done) => {
     let size = 0;
     const chunks = [];
     req.on("data", (chunk) => {
       size += chunk.length;
-      if (size > 64 * 1024) {
+      if (size > max) {
         done(null);
         req.destroy();
       } else chunks.push(chunk);
@@ -357,6 +358,29 @@ const readJson = (req) =>
     });
     req.on("error", () => done(null));
   });
+
+// ------------------------------------------------------------ website events
+// The website sends each visitor action here (navigator.sendBeacon, so plain
+// text and no preflight). Only from WEBSITE_ORIGINS, at most 8 KB, rate
+// limited per visitor; lib/collect.mjs checks the event and passes it on to
+// Meta's Conversions API. It answers with no data.
+async function handleCollect(req, res, ip) {
+  const origin = String(req.headers.origin || "").replace(/\/+$/, "");
+  const allow = collect.ORIGINS.has(origin);
+  const cors = allow ? { "Access-Control-Allow-Origin": origin, Vary: "Origin" } : { Vary: "Origin" };
+  if (req.method === "OPTIONS") {
+    if (!allow) return void res.writeHead(403, cors).end();
+    return void res
+      .writeHead(204, { ...cors, "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "86400" })
+      .end();
+  }
+  if (req.method !== "POST") return void res.writeHead(405, { Allow: "POST, OPTIONS" }).end();
+  if (!allow) return void res.writeHead(403, cors).end();
+  if (!collect.allowed(ip)) return void res.writeHead(429, cors).end();
+  const body = await readJson(req, 8 * 1024);
+  const r = collect.accept(body, { ip, ua: req.headers["user-agent"], origin });
+  res.writeHead(r.error ? 400 : 204, { ...cors, "Cache-Control": "no-store" }).end();
+}
 
 // Meta reads are kept for a minute so switching tabs does not use up Meta's
 // rate limit. Any change made from the dashboard clears this.
@@ -375,6 +399,22 @@ async function handleApi(req, res, urlPath) {
   const route = `${req.method} ${urlPath}`;
   if (route === "GET /api/settings") return sendJson(res, 200, meta.settings());
   if (route === "GET /api/web-events") return sendJson(res, 200, { events: meta.getWebEvents() });
+  if (route === "GET /api/tracking") {
+    const out = { capi: collect.status(), events: meta.getWebEvents(1000), pixel: null, pixelError: null };
+    if (meta.capiReady()) {
+      const hit = treeCache.get("pixel");
+      if (hit && Date.now() - hit.at < TREE_MS && q.get("fresh") !== "1") out.pixel = hit.data;
+      else {
+        try {
+          out.pixel = await meta.pixelStats(7);
+          treeCache.set("pixel", { at: Date.now(), data: out.pixel });
+        } catch (err) {
+          out.pixelError = err instanceof Error ? err.message : String(err);
+        }
+      }
+    }
+    return sendJson(res, 200, out);
+  }
   if (route === "POST /api/web-event") {
     const evtBody = await readJson(req);
     if (!evtBody) return sendJson(res, 400, { error: "Could not read event." });
@@ -482,6 +522,8 @@ const server = createServer(async (req, res) => {
   const ip = clientIp(req);
 
   if (req.url === "/healthz") return void res.writeHead(200).end("ok");
+  // The website's visitor events: public, narrow, see handleCollect.
+  if (String(req.url || "").split("?")[0] === "/collect") return void (await handleCollect(req, res, ip));
   if (PASS.length < 12) return void res.writeHead(503).end("Dashboard password not configured.");
 
   const urlPath = requestPath(req);
@@ -595,4 +637,10 @@ const server = createServer(async (req, res) => {
 server.on("clientError", (_err, socket) => {
   if (socket.writable) socket.end("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
 });
-server.listen(PORT, "0.0.0.0", () => console.log(`G media-buying dashboard on port ${PORT} (password protected, Meta ${meta.configured() ? "connected" : "not connected"})`));
+server.listen(PORT, "0.0.0.0", () => {
+  const w = collect.status();
+  console.log(
+    `G media-buying dashboard on port ${PORT} (password protected, Meta ${meta.configured() ? "connected" : "not connected"}; ` +
+      `website events from ${w.origins.join(", ") || "nowhere"}, ${w.forwarding ? "passed to Meta" : "kept here only"})`,
+  );
+});

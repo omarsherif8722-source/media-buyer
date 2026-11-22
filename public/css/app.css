@@ -518,3 +518,7 @@ tr.row-selected td { background: color-mix(in srgb, var(--accent-soft) 50%, var(
 .mbar i.cur { background: var(--s5); }
 .mval { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mlab { font-size: 10.5px; color: var(--faint); margin-top: 4px; white-space: nowrap; }
+
+/* ---------------------------------------------------------------- ref code line in "Add a lead" */
+.ref-says.good { color: var(--good); }
+.ref-says.bad { color: var(--bad); }

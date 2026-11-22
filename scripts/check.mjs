@@ -67,6 +67,8 @@ const graph = createServer(async (req, res) => {
     if (path === "/888/events") return send(200, { events_received: 1 });
     return send(200, { success: true });
   }
+  if (path === "/888") return send(200, { id: "888", name: "GD Pixel · Test", last_fired_time: "2026-11-22T09:00:00+0000" });
+  if (path === "/888/stats") return send(200, { data: [{ start_time: "2026-11-21T10:00:00+0000", aggregation: "event", data: [{ value: "Contact", count: 2 }, { value: "PageView", count: 5 }] }, { start_time: "2026-11-21T11:00:00+0000", aggregation: "event", data: [{ value: "Contact", count: 1 }] }] });
   if (path === "/act_123") return send(200, { id: "act_123", name: "G Developments · Test", currency: "EGP", timezone_name: "Africa/Cairo", account_status: 1, amount_spent: "1234500", spend_cap: "1300000", balance: "245000", is_prepay_account: false, funding_source_details: { id: "9", display_string: "Visa *0000", type: 1 } });
   if (params.get("effective_status") && path === "/act_123/ads") return send(200, { data: [{ id: NUM.a1, name: "film-15s-price", adset_id: NUM.s1, campaign_id: NUM.c1, effective_status: "DISAPPROVED", issues_info: [{ error_summary: "Ad not approved: housing claims" }] }] });
   if (params.get("effective_status") && (path === "/act_123/campaigns" || path === "/act_123/adsets")) return send(200, { data: [] });
@@ -124,10 +126,12 @@ async function start(port, env) {
   throw new Error(`server did not start: ${log}`);
 }
 const base = 4300 + Math.floor(Math.random() * 500);
-const metaEnv = { DASHBOARD_PASSWORD: PASS, META_GRAPH_URL: GRAPH_URL, META_ACCESS_TOKEN: TOKEN, META_AD_ACCOUNT_ID: "act_123", META_PAGE_ID: "777", META_DATASET_ID: "888" };
+const SITE = "https://site.test";
+const siteEnv = { WEBSITE_ORIGINS: `${SITE}, http://localhost:4174`, COLLECT_FLUSH_MS: "150" };
+const metaEnv = { DASHBOARD_PASSWORD: PASS, META_GRAPH_URL: GRAPH_URL, META_ACCESS_TOKEN: TOKEN, META_AD_ACCOUNT_ID: "act_123", META_PAGE_ID: "777", META_DATASET_ID: "888", META_TEST_EVENT_CODE: "TEST123", ...siteEnv };
 const main = await start(base, metaEnv);
 const ro = await start(base + 1, { ...metaEnv, META_READ_ONLY: "1" });
-const bare = await start(base + 2, { DASHBOARD_PASSWORD: PASS });
+const bare = await start(base + 2, { DASHBOARD_PASSWORD: PASS, ...siteEnv });
 const nopass = await start(base + 3, { DASHBOARD_PASSWORD: "" });
 const messy = await start(base + 4, { DASHBOARD_PASSWORD: ` "${PASS}" `, DASHBOARD_USER: " Media " });
 const U = (p, port = base) => `http://127.0.0.1:${port}${p}`;
@@ -425,6 +429,126 @@ await test("without a Meta token the API says not connected", async () => {
   assert.equal(r.data.notConnected, true);
 });
 
+console.log("Website events (Conversions API)");
+// A visitor's browser sending an event, as navigator.sendBeacon does.
+const beacon = (body, { origin = SITE, port = base, ip = "203.0.113.7", method = "POST" } = {}) =>
+  new Promise((done, fail) => {
+    const headers = { "Content-Type": "text/plain;charset=UTF-8", "User-Agent": "Mozilla/5.0 (iPhone) check", "CF-Connecting-IP": ip };
+    if (origin) headers.Origin = origin;
+    const r = request(U("/collect", port), { method, headers }, (res) => {
+      let t = "";
+      res.on("data", (d) => (t += d));
+      res.on("end", () => done({ status: res.statusCode, text: t, headers: res.headers }));
+    });
+    r.on("error", fail);
+    r.end(body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body));
+  });
+const ev = (over = {}) => ({
+  event_name: "Contact",
+  event_id: `contact.${Math.random().toString(36).slice(2, 14)}`,
+  event_time: Math.floor(Date.now() / 1000),
+  url: `${SITE}/krypton/?utm_source=fb&ad_id=120212345678901234`,
+  site_event: "WhatsApp click",
+  page: "/krypton/",
+  project: "krypton",
+  custom_data: { channel: "whatsapp", place: "Floating button", content_name: "krypton", evil: "x".repeat(50) },
+  ref: "W-WVNPX7UFHF6",
+  attr: { utm_source: "fb", utm_campaign: "GD | Krypton", ad_id: "120212345678901234" },
+  visitor: "abcdef0123456789abcdef",
+  fbp: "fb.1.1732200000000.1234567890",
+  fbc: "fb.1.1732200000000.IwAR0abcdefghijk",
+  ...over,
+});
+const settle = () => new Promise((r) => setTimeout(r, 450));
+const capiPosts = () => posts.filter((p) => p.path === "/888/events" && /"action_source":"website"/.test(p.params.data));
+
+await test("website events are taken only from the website's address", async () => {
+  const pre = await beacon(undefined, { method: "OPTIONS" });
+  assert.equal(pre.status, 204);
+  assert.equal(pre.headers["access-control-allow-origin"], SITE);
+  assert.equal((await beacon(undefined, { method: "OPTIONS", origin: "https://evil.test" })).status, 403);
+  assert.equal((await beacon(ev(), { origin: "https://evil.test" })).status, 403);
+  assert.equal((await beacon(ev(), { origin: "" })).status, 403, "no Origin header");
+  assert.equal((await beacon(ev({ event_name: "Purchase" }))).status, 400, "only the website's events");
+  assert.equal((await beacon(ev({ url: "https://evil.test/x" }))).status, 400, "the page must be on the website");
+  assert.equal((await beacon(ev({ event_id: "x" }))).status, 400, "needs an event id");
+  assert.equal((await beacon("not json")).status, 400);
+  const big = await beacon("x".repeat(9000)).then((r) => r.status, () => "reset");
+  assert.ok(big === 400 || big === "reset", "8 KB at most");
+  assert.equal((await raw("/collect")).status, 405);
+  assert.equal(capiPosts().length, 0, "nothing refused reached Meta");
+});
+await test("an event goes to Meta's Conversions API with the same id as the Pixel's", async () => {
+  const e = ev();
+  const r = await beacon(e);
+  assert.equal(r.status, 204);
+  assert.equal(r.headers["access-control-allow-origin"], SITE);
+  await settle();
+  const sent = capiPosts();
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].params.test_event_code, undefined);
+  const [d] = JSON.parse(sent[0].params.data);
+  assert.equal(d.event_name, "Contact");
+  assert.equal(d.event_id, e.event_id);
+  assert.equal(d.action_source, "website");
+  assert.equal(d.event_source_url, e.url);
+  assert.equal(d.user_data.client_ip_address, "203.0.113.7");
+  assert.match(d.user_data.client_user_agent, /iPhone/);
+  assert.equal(d.user_data.fbp, e.fbp);
+  assert.equal(d.user_data.fbc, e.fbc);
+  assert.match(d.user_data.external_id[0], /^[0-9a-f]{64}$/, "visitor id hashed");
+  assert.deepEqual(d.custom_data, { channel: "whatsapp", content_name: "krypton", place: "Floating button" }, "only known fields");
+});
+await test("events go to Meta together; test pages go with the test code", async () => {
+  const before = capiPosts().length;
+  await Promise.all([beacon(ev({ event_name: "PageView", custom_data: {} })), beacon(ev({ event_name: "ViewContent" })), beacon(ev({ test: true }))]);
+  await settle();
+  const sent = capiPosts().slice(before);
+  assert.equal(sent.length, 2, "one request for real events, one for test events");
+  assert.equal(JSON.parse(sent.find((p) => !p.params.test_event_code).params.data).length, 2);
+  assert.equal(sent.find((p) => p.params.test_event_code).params.test_event_code, "TEST123");
+});
+await test("read-only mode still passes website events on (they change no ads)", async () => {
+  const before = capiPosts().length;
+  assert.equal((await beacon(ev(), { port: base + 1 })).status, 204);
+  await settle();
+  assert.equal(capiPosts().length, before + 1);
+});
+await test("without a Pixel ID the events stay in the dashboard", async () => {
+  const before = posts.length;
+  assert.equal((await beacon(ev(), { port: base + 2 })).status, 204);
+  await settle();
+  assert.equal(posts.length, before);
+  const t = await api("/api/tracking", { port: base + 2 });
+  assert.equal(t.status, 200, t.text);
+  assert.equal(t.data.capi.forwarding, false);
+  assert.equal(t.data.capi.kept, 1);
+  assert.equal(t.data.events[0].sent, false);
+  assert.equal(t.data.pixel, null);
+});
+await test("the Website screen gets the tracking and Meta's Pixel counts", async () => {
+  assert.equal((await fetch(U("/api/tracking"))).status, 401, "behind sign-in");
+  const t = await api("/api/tracking");
+  assert.equal(t.status, 200, t.text);
+  assert.equal(t.data.capi.forwarding, true);
+  assert.ok(t.data.capi.sent >= 4 && t.data.capi.test >= 1, JSON.stringify(t.data.capi));
+  assert.equal(t.data.capi.testCode, true);
+  assert.equal(t.data.pixel.name, "GD Pixel · Test");
+  assert.equal(t.data.pixel.byEvent.Contact, 3);
+  const e = t.data.events.find((x) => x.event === "WhatsApp click" && !x.test);
+  assert.equal(e.ref, "W-WVNPX7UFHF6");
+  assert.equal(e.adId, "120212345678901234");
+  assert.equal(e.utmCampaign, "GD | Krypton");
+  assert.equal(e.sent, true);
+  assert.ok(t.data.events.some((x) => x.test), "test events are marked");
+});
+await test("each visitor may send 300 events per 10 minutes", async () => {
+  let last;
+  for (let i = 0; i < 301; i += 1) last = await beacon(ev({ event_name: "PageView", custom_data: {} }), { ip: "198.51.100.9", port: base + 2 });
+  assert.equal(last.status, 429);
+  assert.equal((await beacon(ev(), { ip: "198.51.100.10", port: base + 2 })).status, 204, "other visitors are not affected");
+});
+
 console.log("Browser code");
 const jsFiles = [];
 const walk = (d) => readdirSync(d, { withFileTypes: true }).forEach((e) => (e.isDirectory() ? walk(join(d, e.name)) : e.name.endsWith(".js") && jsFiles.push(join(d, e.name))));
@@ -556,6 +680,48 @@ await test("rule presets build Meta's format, and read back in plain words", asy
   assert.match(d.text, /once a day: change ad set budget \+15% \(cap EGP 1,500\) for ad sets \(last 7 days\) where form leads > 9 and cost per lead < EGP 175/);
 });
 
+const rc = await import(join(root, "public", "js", "refcode.js"));
+const web = await import(join(root, "public", "js", "views", "website.js"));
+await test("ref codes turn back into the ad, the Tracked link or the website", async () => {
+  assert.equal(rc.adRef("120212345678901234"), "W-WVNPX7UFHF6", "same code as the website makes");
+  assert.equal(rc.adIdFromRef("w-wvnpx7ufhf6"), "120212345678901234");
+  assert.equal(rc.refFromText("Hello Mahmoud, please send me the brochure.\n\n(Ref W-WVNPX7UFHF6)"), "W-WVNPX7UFHF6");
+  assert.equal(rc.refFromText("أهلاً، عايز أعرف أكتر (كود KR-1121-A1)"), "KR-1121-A1");
+  assert.equal(rc.refFromText("no code here"), "");
+  const tree = { campaigns: [{ id: "1", name: "GD | Krypton | Leads", adsets: [{ id: "2", name: "A · Broad", ads: [{ id: "120212345678901234", name: "film-15s" }] }] }] };
+  const r = rc.resolveRef("W-WVNPX7UFHF6", { tree });
+  assert.equal(r.kind, "ad");
+  assert.equal(r.adName, "film-15s");
+  assert.equal(r.adsetName, "A · Broad");
+  assert.equal(r.campaignId, "1");
+  assert.equal(rc.resolveRef("W-WVNPX7UFHF6").adName, undefined, "an ad not loaded still gives its id");
+  assert.equal(rc.resolveRef("W-WVNPX7UFHF6").adId, "120212345678901234");
+  assert.equal(rc.resolveRef("web").kind, "web");
+  assert.equal(rc.resolveRef("KR-1121-A1", { links: [{ ref: "KR-1121-A1", campaign: "Krypton Nov", project: "krypton" }] }).kind, "link");
+  assert.equal(rc.resolveRef("ZZ").kind, "unknown");
+  assert.equal(rc.resolveRef("").kind, "");
+});
+await test("the Website screen does not make up numbers outside demo", async () => {
+  const tree = { range: { since: "2026-11-01", until: "2026-11-30" }, campaigns: [{ id: "1", name: "GD | Krypton | Leads", m: { spend: 1000, linkClicks: 200, landingViews: 0 }, adsets: [] }] };
+  const kr = (rows) => rows.find((x) => x.project.id === "krypton");
+  const real = kr(model.websiteFunnel(tree, [], catalog, []));
+  assert.equal(real.landingViews, 0, "no landing views invented from clicks");
+  assert.equal(real.waClicks + real.layoutViews + real.briefs, 0, "no on-site actions invented");
+  assert.ok(kr(model.websiteFunnel(tree, [], catalog, [], { estimate: true })).waClicks > 0, "demo still estimates");
+  const evts = [
+    { at: "2026-11-10T10:00:00Z", event: "WhatsApp click", project: "krypton" },
+    { at: "2026-10-10T10:00:00Z", event: "WhatsApp click", project: "krypton" },
+    { at: "2026-11-10T10:00:00Z", event: "WhatsApp click", page: "/" },
+    { at: "2026-11-11T10:00:00Z", event: "WhatsApp click", page: "/krypton/", test: true },
+  ];
+  assert.equal(kr(model.websiteFunnel(tree, [], catalog, evts)).waClicks, 1, "inside the period, not the home page, not tests");
+  const now = Date.now();
+  const kept = web.keep([{ id: "b", at: new Date(now - 1000).toISOString() }, { id: "a", at: new Date(now).toISOString() }, { id: "old", at: "2020-01-01T00:00:00Z" }], [{ id: "a", at: new Date(now).toISOString() }]);
+  assert.deepEqual(kept.map((e) => e.id), ["a", "b"], "no duplicates, newest first, old ones dropped");
+  const list = web.checks({ capi: { received: 0, since: new Date().toISOString(), origins: [SITE], datasetSet: false, byEvent: {} }, pixel: null }, [], SITE, "https://dash.test");
+  assert.match(list[0].text, /collectUrl/);
+  assert.match(list[1].text, /META_DATASET_ID/);
+});
 const cr = await import(join(root, "public", "js", "views", "creatives.js"));
 const fm = await import(join(root, "public", "js", "views", "forms.js"));
 const pay = await import(join(root, "public", "js", "views", "payments.js"));
@@ -728,6 +894,14 @@ await test("demo 'get new leads' brings Meta-shaped leads", async () => {
   assert.match(r.leads[0].metaId, /^\d{16}$/);
 });
 
+await test("demo tracking: events name demo ads through their ref codes", async () => {
+  const t = await demo.get("/api/tracking");
+  const tree = await demo.get("/api/tree", { range: "last_7d" });
+  assert.ok(t.demo && t.pixel.byEvent.PageView > 0 && t.events.length > 50);
+  const fromAd = t.events.find((e) => e.ref.startsWith("W-"));
+  assert.equal(rc.resolveRef(fromAd.ref, { tree }).kind, "ad");
+  assert.ok(rc.resolveRef(fromAd.ref, { tree }).adName, "the demo ad is found");
+});
 for (const s of [main, ro, bare, nopass, messy]) s.child.kill();
 graph.close();
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll checks passed.");

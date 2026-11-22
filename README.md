@@ -13,7 +13,7 @@ It merges two earlier projects:
 | --- | --- |
 | Command Center (`overview`) | Executive KPI pulse, Dual-Axis SVG Daily Spend vs. Valid Buyers Trend chart, Full-Funnel Conversion Waterfall, 1-Click Decision & Action Engine (Scale +20%, Pause waste, Widen geo), G Developments Portfolio Spend vs. Valid Buyers & ATS Stock matrix, and Grade-A Priority Speed-to-Lead Queue. |
 | Egypt & GCC Map (`geo`) | Interactive vector geo-intelligence map of Egypt (Greater Cairo & Nile Delta zoom, All 27 Egypt Governorates, and GCC Expat Hubs: KSA, UAE, Kuwait, Qatar). Color-code by Spend, Valid Buyers, Cost/Valid Lead, Valid Rate %, or Reservations. Click any corridor or governorate to inspect active ad sets and execute 1-click geo retargeting, +20% scaling, exclusion, or 1% Lookalike buyer list export. |
-| Website Funnel (`website`) | Live bridge between Meta campaigns and `mahmoud-elhemaly.onrender.com`: Ad Clicks → Landing Page Views (LPV load rate) → On-site Micro-Conversions (Residences tab, Future Home payment finder, 4K film plays, brochure requests) → Direct WhatsApp/Call/Brief macro conversions → Valid Buyers, plus per-project CRO diagnosis and Meta Pixel / CAPI / Umami setup. |
+| Website (`website`) | Whether the website's tracking works (events arriving, passed to Meta's Conversions API, the Pixel's own 7-day counts, ads tagging their links), the four setup steps, and Ad clicks → landing page views (Meta) → layouts, payment plans, WhatsApp, calls and briefs (the website's events) → valid buyers, per project page. Outside demo it shows only real numbers. |
 | Campaigns (`campaigns`) | Switch between campaigns in one click. Automated Media Buyer Verdict badges (`Scale +20%`, `Winner · Hold`, `Creative fatigue`, `Fix hook`, `Learning limited`, `Pause waste`), daily campaign sparkline, 1-click +20% budget scaling, status switches, and full targeting editor. |
 | Budget planner (`planner`) | Turn a monthly budget into valid leads, meetings and reservations, or work back from a reservation goal. |
 | Leads & CRM (`leads`) | Log every lead with automated **Grade A/B/C/D** scoring and **City/Corridor attribution**, Speed-to-Lead SLA conversion chart, 1-click batch sync of valid stages to Meta Conversions API (CAPI), Meta lead-form pull, UTF-16/tab CSV import, export, and backup. |
@@ -55,10 +55,30 @@ A lead counts as **valid** at the stage "Real interest" or any later stage (meet
 | `META_ACCESS_TOKEN` | yes | The system user token. |
 | `META_AD_ACCOUNT_ID` | yes | `act_…` from Ads Manager. |
 | `META_PAGE_ID` | for lead forms | The Page that owns the instant forms. |
-| `META_DATASET_ID` | optional | Pixel / dataset id. Sends valid-lead stages back to Meta (Conversions API for CRM) so Meta can find more people like them. Set up the matching events in Events Manager first. |
+| `META_DATASET_ID` | optional | Pixel / dataset id (assign the Pixel to the system user). Website events go to it through the Conversions API, and valid-lead stages from Leads (Conversions API for CRM). |
+| `WEBSITE_ORIGINS` | optional | Addresses allowed to send website events to `/collect`, comma separated. Default `https://mahmoud-elhemaly.onrender.com`. |
+| `META_TEST_EVENT_CODE` | optional | From Events Manager → Test events. Website pages opened with `?track=test` send with it (and send nothing to Meta without it). Remove it after testing. |
+| `META_CAPI` | optional | `0` = keep website events in the dashboard only, send none to Meta. |
 | `META_READ_ONLY` | optional | `1` = look only; every change is blocked. Good for the first days. |
 | `META_MAX_DAILY_BUDGET` | optional | Highest daily budget the dashboard may set. |
 | `META_API_VERSION` | optional | Graph API version, default `v23.0`. |
+
+### Website tracking (Pixel, Conversions API, ref codes)
+
+The website (`js/site.js` in its repo) sends each visitor action twice under one event id: to the Meta Pixel in the browser, and to this server's `/collect`, which adds the visitor's IP address and browser and passes it to Meta's Conversions API. Meta counts it once, and still gets it when an ad blocker or iPhone privacy stops the Pixel.
+
+| On the website | Meta event |
+| --- | --- |
+| Any page | `PageView` |
+| A project page, a project picked on the home page, a Krypton layout, the film | `ViewContent` |
+| A payment plan opened | `CustomizeProduct` |
+| The WhatsApp or call button | `Contact` |
+| The brief sent | `Lead` |
+| A brochure downloaded | `BrochureDownload` (custom) |
+
+- `/collect` needs no sign-in, so it is narrow: only from `WEBSITE_ORIGINS`, only these events, at most 8 KB and 300 events per visitor per 10 minutes, and it answers nothing. No names or phone numbers are sent; the visitor id is hashed. `META_READ_ONLY` does not stop it (it changes no ads).
+- **Ref codes.** Paste the URL parameters from Website or Tracked links into every ad; they include `ad_id={{ad.id}}`. The website keeps the visit's source for 30 days and ends every WhatsApp message with `(Ref W-…)`, the ad id in base 36 (`WEB` for a visit not from an ad, or a Tracked link's own code). Paste the message under Leads → Add a lead and the ad, ad set and campaign fill in (`public/js/refcode.js`).
+- On the free plan the server forgets its event list when it sleeps. The Website screen keeps every event it has loaded in this browser (90 days), and shows Meta's own Pixel counts, which are complete.
 
 ### Safety on changes
 
@@ -111,7 +131,9 @@ Open the link in Safari (iPhone: Share → Add to Home Screen) or Chrome (Androi
 | Path | What |
 | --- | --- |
 | `server.mjs` | Sign-in (from the Hytech dashboard), static files, `/api/*`. |
-| `lib/meta.mjs` | Meta Marketing API: reads, guarded writes, lead forms, lead stages to Meta, change log. |
+| `lib/meta.mjs` | Meta Marketing API: reads, guarded writes, lead forms, lead stages to Meta, website events to Meta, change log. |
+| `lib/collect.mjs` | `/collect`: the website's events in, checked, batched to Meta's Conversions API. |
+| `public/js/refcode.js` | Ref codes in WhatsApp messages → ad, Tracked link or website. |
 | `public/js/app.js` | Shell, routing, dates, loading data. |
 | `public/js/model.js` | Lead stages, valid leads, lead quality per campaign / ad set / ad, alert rules. |
 | `public/js/demo.js` | Demo mode: the made-up account and leads, answered in the browser. |

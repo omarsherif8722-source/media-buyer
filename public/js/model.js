@@ -661,7 +661,11 @@ export function geoBreakdown(tree, list, catalog, actual = null) {
 }
 
 // ---------------------------------------------------------------- Website & Landing Page Funnel
-export function websiteFunnel(tree, list, catalog, liveEvents = []) {
+// Spend, clicks and landing page views come from Meta; on-site actions
+// (WhatsApp, calls, briefs, layouts…) from the website's own events, counted
+// only inside the period. `estimate` (demo mode only) fills the on-site
+// columns from landing page views instead, as made-up but plausible numbers.
+export function websiteFunnel(tree, list, catalog, liveEvents = [], { estimate = false } = {}) {
   const { since, until } = treeDates(tree);
   const byProject = {};
 
@@ -694,7 +698,7 @@ export function websiteFunnel(tree, list, catalog, liveEvents = []) {
     row.spend += c.m.spend || 0;
     row.impressions += c.m.impressions || 0;
     row.linkClicks += c.m.linkClicks || 0;
-    row.landingViews += c.m.landingViews || Math.round((c.m.linkClicks || 0) * 0.79);
+    row.landingViews += c.m.landingViews || (estimate ? Math.round((c.m.linkClicks || 0) * 0.79) : 0);
     row.metaLeads += (c.m.leads || 0) + (c.m.convos || 0);
   }
 
@@ -711,9 +715,14 @@ export function websiteFunnel(tree, list, catalog, liveEvents = []) {
     if (RESERVED_UP.has(l.stage)) row.reserved += 1;
   }
 
-  // Enrich with on-site micro-conversions (either from live webhook events or proportional to landingViews)
-  for (const evt of liveEvents) {
-    const pid = evt.project || catalog?.projects?.find((p) => String(evt.page || "").includes(p.slug))?.id || "krypton";
+  // On-site actions from the website's events, inside the period. Events on
+  // the home page (no project) are not given to any project.
+  for (const evt of estimate ? [] : liveEvents) {
+    const d = String(evt.at || "").slice(0, 10);
+    if (since && d < since) continue;
+    if (until && d > until) continue;
+    if (evt.test) continue;
+    const pid = evt.project || catalog?.projects?.find((p) => String(evt.page || "").includes(`/${p.slug}/`))?.id;
     const row = byProject[pid];
     if (!row) continue;
     if (/whatsapp/i.test(evt.event)) row.waClicks += 1;
@@ -727,8 +736,8 @@ export function websiteFunnel(tree, list, catalog, liveEvents = []) {
 
   const rows = Object.values(byProject).map((r) => {
     const lpv = r.landingViews;
-    // When running in demo mode or before Umami webhook events arrive, derive realistic on-site engagement from LPVs & project properties
-    if (lpv > 0 && !liveEvents.length) {
+    // Demo mode only: plausible on-site numbers from landing page views.
+    if (estimate && lpv > 0) {
       r.layoutViews = Math.round(lpv * (r.project.id === "krypton" ? 0.48 : 0.36));
       r.paymentViews = Math.round(lpv * 0.41);
       r.filmPlays = r.project.hasFilm ? Math.round(lpv * 0.29) : 0;

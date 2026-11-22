@@ -14,7 +14,8 @@ const CHANNELS = [
   ["whatsapp", "WhatsApp status or broadcast", "messaging"],
   ["organic", "Organic post or bio", "social"],
 ];
-const META_PARAMS = "utm_source={{site_source_name}}&utm_medium=paid_social&utm_campaign={{campaign.name}}&utm_term={{adset.name}}&utm_content={{ad.name}}";
+// ad_id lets the website put the ad in each WhatsApp message's ref code (W-…).
+export const META_PARAMS = "utm_source={{site_source_name}}&utm_medium=paid_social&utm_campaign={{campaign.name}}&utm_term={{adset.name}}&utm_content={{ad.name}}&ad_id={{ad.id}}";
 
 const slug = (s) => String(s || "").trim().toLowerCase().replace(/[^\w؀-ۿ]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
 const abbr = (name) => {
@@ -63,7 +64,7 @@ export function render(ctx) {
       ${box("WhatsApp link", out.waUrl, "WhatsApp link copied")}
       <p class="small muted">Message the buyer sends: <span ${form.lang === "ar" ? raw('dir="rtl" lang="ar"') : ""}>${out.text}</span></p>
       ${box("Meta ads: URL parameters (paste in the ad, under Tracking)", META_PARAMS, "URL parameters copied")}
-      <p class="small muted">Meta fills in the campaign, ad set and ad names by itself. For Click-to-WhatsApp ads, put the ref code in the ad's pre-filled message.</p>
+      <p class="small muted">Meta fills in the campaign, ad set and ad names and the ad id by itself. On the website, every WhatsApp message then ends with a W- code for that ad, which Leads turns back into the ad. For Click-to-WhatsApp ads, put the ref code in the ad's pre-filled message.</p>
     </div>
   </div>
   <div class="card"><div class="card-head"><div><h2>Saved links</h2><p>Kept in this browser. Included in Leads → Backup.</p></div></div>

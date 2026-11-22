@@ -9,6 +9,7 @@ import {
   scoreLeadGrade, EGYPT_CORRIDORS,
 } from "../model.js";
 import { kpi } from "./common.js";
+import { refFromText, resolveRef } from "../refcode.js";
 
 let groupFilter = "all"; // all | gradeA | waiting | valid | bad
 let projectFilter = "";
@@ -229,30 +230,54 @@ function addDialog(ctx) {
       <label class="field"><span>Project</span><select class="input" name="project"><option value="">—</option>${(ctx.catalog?.projects || []).map((p) => html`<option value="${p.id}">${p.name}</option>`)}</select></label>
       <label class="field"><span>City / Corridor</span><select class="input" name="city">${EGYPT_CORRIDORS.map((c) => html`<option value="${c.id}">${c.id} (${c.gov})</option>`)}</select></label>
       <label class="field"><span>Came from</span><select class="input" name="source">${SOURCES.map(([v, l]) => html`<option value="${v}" ${v === "whatsapp" ? raw("selected") : ""}>${l}</option>`)}</select></label>
-      ${links.length ? html`<label class="field"><span>Ref code (from the WhatsApp message)</span><select class="input" name="ref"><option value="">—</option>${links.map((k) => html`<option value="${k.ref}">${k.ref} · ${k.campaign || ""} ${k.content || ""}</option>`)}</select></label>` : ""}
+      <label class="field"><span>Ref code (end of their WhatsApp message)</span><input class="input mono" name="ref" list="ref-codes" autocomplete="off" spellcheck="false" placeholder="e.g. W-1J3TB5W4QGVK" data-refcode><datalist id="ref-codes">${links.map((k) => html`<option value="${k.ref}">${[k.campaign, k.content].filter(Boolean).join(" · ")}</option>`)}</datalist></label>
       ${campaigns.length ? html`<label class="field"><span>Campaign</span><select class="input" name="campaign"><option value="">—</option>${campaigns.map((c) => html`<option value="${c.id}">${c.name}</option>`)}</select></label>` : html`<label class="field"><span>Campaign name</span><input class="input" name="campaignName"></label>`}
     </div>
+    <p class="small muted" data-ref-says style="margin:-4px 0 10px">Paste their first message below and the ref code fills in by itself.</p>
+    <label class="field"><span>Their first WhatsApp message (optional)</span><textarea class="input" name="first" rows="3" dir="auto" data-first placeholder="Paste it here"></textarea></label>
     <label class="field"><span>Notes</span><textarea class="input" name="notes" rows="2"></textarea></label>
     <div class="acts"><button class="btn" value="no" formnovalidate>Cancel</button><button class="btn primary" value="yes">Add lead</button></div>
   </form>`.s;
   document.body.append(d);
+  const form = $("form", d);
+  const says = $("[data-ref-says]", d);
+  const showRef = () => {
+    const r = resolveRef(form.elements.ref.value, { tree: ctx.tree, links });
+    says.textContent = r.kind ? `${r.code}: ${r.label}.` : "Paste their first message below and the ref code fills in by itself.";
+    says.className = `small ref-says ${r.kind === "unknown" ? "bad" : r.kind ? "good" : "muted"}`;
+    // A website visit from an ad names its campaign: pick it, and its project.
+    if (r.campaignId && form.elements.campaign) form.elements.campaign.value = r.campaignId;
+    const proj = r.link?.project || (r.campaignName && projectFromName(r.campaignName, ctx.catalog)?.id);
+    if (proj && !form.elements.project.value) form.elements.project.value = proj;
+  };
+  form.addEventListener("input", (e) => {
+    if (e.target.matches("[data-first]")) {
+      const code = refFromText(e.target.value);
+      if (code) form.elements.ref.value = code;
+    }
+    if (e.target.matches("[data-first], [data-refcode]")) showRef();
+  });
   d.addEventListener("close", () => {
     if (d.returnValue === "yes") {
-      const f = new FormData($("form", d));
-      const ref = f.get("ref") || "";
-      const link = links.find((k) => k.ref === ref);
-      const camp = campaigns.find((c) => c.id === f.get("campaign"));
+      const f = new FormData(form);
+      const ref = String(f.get("ref") || "").trim().toUpperCase();
+      const r = resolveRef(ref, { tree: ctx.tree, links });
+      const camp = campaigns.find((c) => c.id === (f.get("campaign") || r.campaignId));
+      const first = String(f.get("first") || "").trim();
+      const notes = String(f.get("notes") || "").trim();
       addLead({
         name: String(f.get("name") || "").trim(),
         phone: String(f.get("phone") || "").trim(),
-        project: f.get("project") || link?.project || null,
+        project: f.get("project") || r.link?.project || null,
         city: String(f.get("city") || "New Cairo"),
         source: f.get("source") || "other",
         ref: ref || null,
         campaignId: camp?.id || null,
-        campaignName: camp?.name || String(f.get("campaignName") || "").trim() || link?.campaign || null,
-        adName: link?.content || null,
-        notes: String(f.get("notes") || "").trim(),
+        campaignName: camp?.name || String(f.get("campaignName") || "").trim() || r.campaignName || null,
+        adsetName: r.adsetName || null,
+        adName: r.adName || null,
+        adId: r.adId || null,
+        notes: [notes, first ? `First message: ${first}` : ""].filter(Boolean).join("\n"),
       });
       toast("Lead added.", "good");
     }
