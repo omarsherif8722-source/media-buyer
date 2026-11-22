@@ -443,7 +443,7 @@ function renderLeadsTab(leadsInPeriod, q, tt) {
     <div class="card-head">
       <div>
         <h2>Fast Lead Reply &amp; Campaign Message Inbox (${n(filtered.length)})</h2>
-        <p>Click any WhatsApp template button below to reply in 1 second with the buyer's name and project details pre-filled, then tap their status so Omar Sherif's campaign engine optimizes for your best buyers.</p>
+        <p>Click any WhatsApp template button below to reply in 1 second with the buyer's name and project details pre-filled, then tap their status to track qualified buyers and reservations.</p>
       </div>
       <div class="row wrap">
         <button class="btn sm wa-btn" type="button" data-simulate-msg>💬 + Test Live Campaign Message Alert</button>
@@ -644,10 +644,10 @@ function renderProjectsTab(leadsInPeriod, q, tt) {
     <div class="card">
       <div class="card-head">
         <div>
-          <h2>Media Buyer Optimizations by Omar Sherif</h2>
-          <p>Technical campaign actions taken behind the scenes to maximize your valid buyers and reservations.</p>
+          <h2>Campaign Optimizations &amp; Updates</h2>
+          <p>Latest campaign actions taken to maximize your valid buyers and reservations.</p>
         </div>
-        <span class="buyer-badge"><i></i>Managed by Omar Sherif</span>
+        <span class="buyer-badge"><i></i>Active Optimization</span>
       </div>
       <div style="display:grid;gap:10px">
         ${omarNotes.map((note) => html`
@@ -701,9 +701,8 @@ function render() {
       <div class="brand-title">
         <b>
           Mahmoud Elhemaly · G Developments
-          <span class="buyer-badge"><i></i>Campaigns Managed by Omar Sherif</span>
         </b>
-        <span>Client Lead, WhatsApp Reply &amp; Spend Results Portal · ${since} to ${until}</span>
+        <span>Lead, WhatsApp Reply &amp; Spend Results Portal · ${since} to ${until}</span>
       </div>
     </div>
 
@@ -921,7 +920,7 @@ function bindEvents() {
       const id = stageBtn.dataset.leadId;
       const nextStage = stageBtn.dataset.quickStage;
       updateLead(id, { stage: nextStage });
-      toast(`Lead marked as ${STAGE[nextStage]?.label || nextStage}. Synced with Omar Sherif's campaign dashboard.`, "good");
+      toast(`Lead marked as ${STAGE[nextStage]?.label || nextStage}.`, "good");
       return render();
     }
     const waReply = e.target.closest("[data-wa-reply]");

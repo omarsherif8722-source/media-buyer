@@ -177,8 +177,8 @@ function shell() {
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">${G_MARK}</div>
         <div>
-          <b>Omar Sherif</b>
-          <span>Media Buying Command Center</span>
+          <b>G Developments</b>
+          <span>Media Command Center</span>
         </div>
       </div>
       <div style="padding:8px;border-radius:10px;background:var(--bg-2);border:1px solid var(--line);display:grid;gap:6px">
@@ -205,7 +205,7 @@ function shell() {
     </nav>
     <div class="content">
       <header class="appbar">
-        <div class="appbar-brand"><div class="brand-mark" aria-hidden="true">${G_MARK}</div><b>Omar Sherif · Media Buyer</b></div>
+        <div class="appbar-brand"><div class="brand-mark" aria-hidden="true">${G_MARK}</div><b>Media Command</b></div>
         <div class="appbar-status small" data-appbar-status></div>
         <a class="btn sm" href="./client/" target="_blank" rel="noopener" title="Open Mahmoud Elhemaly's Client Lead & Results Portal">Client Portal (Mahmoud) ↗</a>
         <div class="demo-switch"><span id="demo-label">Demo</span><button type="button" class="switch" role="switch" aria-checked="false" aria-labelledby="demo-label" data-demo-toggle title="Show made-up campaigns and leads"></button></div>
