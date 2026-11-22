@@ -546,7 +546,7 @@ export function createDemo(catalog) {
           const ads = s.ads.map((a) => {
             const t = sumRows(a.rows, idx);
             st = add(st, t);
-            return { id: a.id, name: a.name, status: a.status, effectiveStatus: eff(a.status, s.status !== "ACTIVE" || c.status !== "ACTIVE", s.status !== "ACTIVE" ? "ADSET" : "CAMPAIGN"), created: null, creative: { id: `${a.id}9`, thumb: null, title: null, body: null, type: "VIDEO" }, m: toMetrics(t, s.sp.f * a.freqX, idx) };
+            return { id: a.id, name: a.name, status: a.status, effectiveStatus: eff(a.status, s.status !== "ACTIVE" || c.status !== "ACTIVE", s.status !== "ACTIVE" ? "ADSET" : "CAMPAIGN"), created: null, creative: { id: `${a.id}9`, thumb: null, title: a.title || null, body: a.body || null, type: "VIDEO" }, m: toMetrics(t, s.sp.f * a.freqX, idx) };
           });
           ct = add(ct, st);
           fSum += s.sp.f * st.imps;
@@ -676,6 +676,57 @@ export function createDemo(catalog) {
       (state.ruleHistory ||= []).unshift({ timestamp: new Date().toISOString(), rule_id: rule.id, rule_name: rule.name, results });
       log({ action: "rule-created", id: rule.id, name: rule.name, to: results.length });
       return wait({ id: rule.id, name: rule.name, demoRun: results.length });
+    }
+    if (path === "/api/copy" || path === "/api/ad-version") {
+      // Copies start switched off and have no results yet, like real copies.
+      const where = () => {
+        for (const c of state.campaigns) {
+          if (c.id === String(body.id)) return { c };
+          for (const st of c.sets) {
+            if (st.id === String(body.id)) return { c, s: st };
+            for (const a of st.ads) if (a.id === String(body.id)) return { c, s: st, a };
+          }
+        }
+        return null;
+      };
+      const w = where();
+      const name = String(body.name || "").trim();
+      if (!w) return fail("Not found in the demo account.");
+      if (!name) return fail(path === "/api/copy" ? "Give the copy a name." : "Give the new ad a name.");
+      let seq = 0;
+      const newId = () => `${Date.now()}${String((seq += 1)).padStart(3, "0")}`;
+      const cloneAd = (a, nm) => ({ ...a, id: newId(), name: nm ?? a.name, status: "PAUSED", rows: a.rows.map(() => null) });
+      const cloneSet = (st, nm) => ({ ...st, id: newId(), name: nm ?? st.name, status: "PAUSED", targeting: JSON.parse(JSON.stringify(st.targeting)), ads: st.ads.map((a) => cloneAd(a)) });
+      if (path === "/api/ad-version") {
+        if (!w.a) return fail("Pick an ad.");
+        if (!body.message && !body.headline) return fail("Change the primary text or the headline.");
+        const v = cloneAd(w.a, name);
+        if (body.message) v.body = String(body.message);
+        if (body.headline) v.title = String(body.headline);
+        w.s.ads.push(v);
+        return wait(log({ action: "new-ad-version", kind: "ad", id: v.id, name, from: w.a.name, to: "off" }));
+      }
+      if (body.kind === "campaign" && !w.s) {
+        const c2 = { ...w.c, id: newId(), name, status: "PAUSED", sets: w.c.sets.map((st) => cloneSet(st)) };
+        state.campaigns.splice(state.campaigns.indexOf(w.c) + 1, 0, c2);
+        return wait(log({ action: "copy", kind: "campaign", id: c2.id, name, from: w.c.name, to: `${c2.sets.length} ad sets, off` }));
+      }
+      if (body.kind === "adset" && w.s && !w.a) {
+        const target = body.targetId ? state.campaigns.find((c) => c.id === String(body.targetId)) : w.c;
+        if (!target) return fail("That campaign is not in this ad account.");
+        const s2 = cloneSet(w.s, name);
+        if (body.dailyBudget) s2.budget = Number(body.dailyBudget);
+        target.sets.push(s2);
+        return wait(log({ action: "copy", kind: "ad set", id: s2.id, name, from: w.s.name, to: `${s2.ads.length} ads, off` }));
+      }
+      if (body.kind === "ad" && w.a) {
+        let target = w.s;
+        if (body.targetId) for (const c of state.campaigns) for (const st of c.sets) if (st.id === String(body.targetId)) target = st;
+        const a2 = cloneAd(w.a, name);
+        target.ads.push(a2);
+        return wait(log({ action: "copy", kind: "ad", id: a2.id, name, from: w.a.name, to: "off" }));
+      }
+      return fail("Copy a campaign, an ad set or an ad.");
     }
     if (path === "/api/rules/status") {
       const r = (state.rules ||= []).find((x) => x.id === String(body.id));

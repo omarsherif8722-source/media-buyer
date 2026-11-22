@@ -8,6 +8,7 @@ import { targets } from "../store.js";
 import { allLeads, quality, treeDates, score, projectFromName, verdict } from "../model.js";
 import { kpi, statusPill, objective, switchBtn, connectCard, loadingCard, targetingLine } from "./common.js";
 import { openTargeting } from "./targeting.js";
+import { openCopy, openVersion } from "./copydialog.js";
 
 let search = "";
 let filter = "all"; // all | on | off
@@ -158,6 +159,7 @@ function detail(ctx, item, q) {
       </div>
       <div class="row wrap">
         ${p ? html`<a class="btn sm ghost" href="${p.url}" target="_blank" rel="noopener">Landing Page ↗</a>` : ""}
+        ${ctx.tree.readOnly ? "" : html`<button class="btn sm ghost" type="button" data-copy="campaign" data-id="${c.id}" title="Copy this campaign with its ad sets and ads (starts switched off)">Duplicate</button>`}
         ${budgetButton(c, "campaign")}
       </div>
     </div>
@@ -206,6 +208,7 @@ function adsetTable(setRows, q, t, ro) {
         <div class="row" style="justify-content:flex-end">
           ${!ro && a.dailyBudget && v.code === "scale" ? html`<button class="btn sm primary" type="button" data-quick-scale="${a.id}" data-value="${a.dailyBudget}" data-name="${a.name}" title="${v.why}">+20%</button>` : ""}
           <button class="btn sm" type="button" data-targeting="${a.id}">Targeting</button>
+          ${ro ? "" : html`<button class="btn sm ghost" type="button" data-copy="adset" data-id="${a.id}" title="Copy this ad set (starts switched off)">Duplicate</button>`}
           <button class="btn sm ghost" type="button" data-expand="${a.id}" aria-expanded="${open.has(a.id)}">${open.has(a.id) ? "Hide" : `Ads (${a.ads.length})`}</button>
         </div>
       </td>
@@ -218,7 +221,8 @@ function adsetTable(setRows, q, t, ro) {
           <td></td>
           <td class="n">${money(as.spend)}</td><td class="n">${n(as.metaLeads)}</td><td class="n">${money(as.cpl)}</td>
           <td class="n"><b>${n(as.valid)}</b></td><td class="n"><b>${money(as.cpvl)}</b></td><td class="n">${n(as.meetings)}</td>
-          <td class="n">${ad.m?.frequency ? ad.m.frequency.toFixed(1) : "—"}</td><td class="n">${pct(ad.m?.ctr, 2)}</td><td></td>
+          <td class="n">${ad.m?.frequency ? ad.m.frequency.toFixed(1) : "—"}</td><td class="n">${pct(ad.m?.ctr, 2)}</td>
+          <td class="n">${ro ? "" : html`<div class="row" style="justify-content:flex-end"><button class="btn sm ghost" type="button" data-version="${ad.id}" title="Same image or video, new text or headline (starts switched off)">New version</button><button class="btn sm ghost" type="button" data-copy="ad" data-id="${ad.id}" title="Copy this ad (starts switched off)">Duplicate</button></div>`}</td>
         </tr>`,
         )
       : ""}`;
@@ -397,6 +401,18 @@ export function mount(root, ctx) {
     if (f) {
       filter = f.dataset.filter;
       return ctx.render();
+    }
+    const cp = e.target.closest("[data-copy]");
+    if (cp) {
+      const found = findObj(ctx.tree, cp.dataset.id);
+      if (found) openCopy(cp.dataset.copy, found.obj, ctx);
+      return;
+    }
+    const ver = e.target.closest("[data-version]");
+    if (ver) {
+      const found = findObj(ctx.tree, ver.dataset.version);
+      if (found) openVersion(found.obj, found.grand, ctx);
+      return;
     }
     const tg = e.target.closest("[data-targeting]");
     if (tg) {

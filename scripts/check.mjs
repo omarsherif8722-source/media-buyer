@@ -31,7 +31,7 @@ const objects = {
   c1: { id: "c1", account_id: "123", name: "GD | Krypton | Leads | Broad | Nov", status: "ACTIVE", effective_status: "ACTIVE", objective: "OUTCOME_LEADS" },
   c2: { id: "c2", account_id: "123", name: "GD | Golf Views | Leads | Nov", status: "PAUSED", effective_status: "PAUSED", objective: "OUTCOME_LEADS", daily_budget: "30000" },
   s1: { id: "s1", account_id: "123", name: "A · Broad", campaign_id: "c1", status: "ACTIVE", effective_status: "ACTIVE", daily_budget: "50000", optimization_goal: "LEAD_GENERATION", targeting },
-  a1: { id: "a1", account_id: "123", name: "film-15s-price", adset_id: "s1", campaign_id: "c1", status: "ACTIVE", effective_status: "ACTIVE" },
+  a1: { id: "a1", account_id: "123", name: "film-15s-price", adset_id: "s1", campaign_id: "c1", status: "ACTIVE", effective_status: "ACTIVE", creative: { id: "500002", object_story_spec: { page_id: "777", link_data: { message: "Old text", name: "Old headline", link: "https://example.com/krypton/", image_hash: "abc123", call_to_action: { type: "SIGN_UP", value: { lead_gen_form_id: "500001" } } } } } },
 };
 // Graph ids are numeric; map test ids to numbers the server accepts.
 const NUM = { c1: "100001", c2: "100002", s1: "200001", a1: "300001", other: "999999" };
@@ -59,6 +59,11 @@ const graph = createServer(async (req, res) => {
   if (req.method === "POST") {
     posts.push({ path, params: Object.fromEntries(params) });
     if (path === "/act_123/adrules_library") return send(200, { id: "77700001" });
+    if (path === `/${NUM.c1}/copies`) return send(200, { copied_campaign_id: "100009", ad_object_ids: [] });
+    if (path === `/${NUM.s1}/copies`) return send(200, { copied_adset_id: "200009", ad_object_ids: [] });
+    if (path === `/${NUM.a1}/copies`) return send(200, { copied_ad_id: "300009" });
+    if (path === "/act_123/adcreatives") return send(200, { id: "400009" });
+    if (path === "/act_123/ads") return send(200, { id: "300010" });
     if (path === "/888/events") return send(200, { events_received: 1 });
     return send(200, { success: true });
   }
@@ -81,6 +86,8 @@ const graph = createServer(async (req, res) => {
     if (level === "adset") return send(200, { data: [ins("s1", "adset_id")] });
     return send(200, { data: [ins("a1", "ad_id")] });
   }
+  if (path === `/${NUM.c1}/adsets`) return send(200, { data: [{ id: NUM.s1, effective_status: "ACTIVE" }] });
+  if (path === `/${NUM.s1}/ads`) return send(200, { data: [{ id: NUM.a1, effective_status: "ACTIVE" }] });
   if (path === "/act_123/adrules_library") return send(200, { data: [{ id: "77700001", name: "GD · No-result stop-loss · Krypton", status: "ENABLED", evaluation_spec: { evaluation_type: "SCHEDULE", filters: [{ field: "entity_type", operator: "EQUAL", value: "AD" }, { field: "spent", operator: "GREATER_THAN", value: 60000 }] }, execution_spec: { execution_type: "PAUSE" }, schedule_spec: { schedule_type: "SEMI_HOURLY" } }] });
   if (path === "/act_123/adrules_history") return send(200, { data: [{ rule_id: "77700001", timestamp: "2026-11-20T10:00:00+0000", results: [{ object_id: NUM.a1, actions: [{ action: "PAUSE" }] }] }] });
   if (path === "/act_123/customaudiences") return send(200, { data: [{ id: "400001", name: "Krypton page visitors 30d", subtype: "WEBSITE" }] });
@@ -307,6 +314,57 @@ await test("automatic rules: create from a preset, switch off, delete, history",
   const h = await api("/api/rules/history");
   assert.equal(h.data[0].rule_id, "77700001");
   assert.equal((await api("/api/rules", { method: "POST", body: { preset: "stoploss", params: { type: "leads", cpl: 300, campaignIds: [NUM.c1] } }, port: base + 1 })).status, 403, "read-only blocks rules");
+});
+await test("duplicate a campaign: campaign, then its ad sets with their ads, all switched off", async () => {
+  const n0 = posts.length;
+  const r = await api("/api/copy", { method: "POST", body: { kind: "campaign", id: NUM.c1, name: "GD | Krypton | Leads | Dec" } });
+  assert.equal(r.status, 200, r.text);
+  const mine = posts.slice(n0);
+  assert.equal(mine[0].path, `/${NUM.c1}/copies`);
+  assert.equal(mine[0].params.status_option, "PAUSED");
+  assert.equal(mine[0].params.deep_copy, "false");
+  assert.equal(mine[1].path, `/${NUM.s1}/copies`);
+  assert.equal(mine[1].params.campaign_id, "100009");
+  assert.equal(mine[1].params.deep_copy, "true", "1 ad: Meta copies it in the same call");
+  assert.equal(mine[1].params.status_option, "PAUSED");
+  assert.equal(mine.at(-1).path, "/100009");
+  assert.equal(mine.at(-1).params.name, "GD | Krypton | Leads | Dec");
+});
+await test("duplicate an ad set with a new budget, and an ad into another ad set", async () => {
+  let n0 = posts.length;
+  const r = await api("/api/copy", { method: "POST", body: { kind: "adset", id: NUM.s1, name: "A · Broad · copy", dailyBudget: 700 } });
+  assert.equal(r.status, 200, r.text);
+  let mine = posts.slice(n0);
+  assert.equal(mine[0].params.status_option, "PAUSED");
+  assert.equal(mine.at(-1).path, "/200009");
+  assert.equal(mine.at(-1).params.daily_budget, "70000");
+  n0 = posts.length;
+  const a = await api("/api/copy", { method: "POST", body: { kind: "ad", id: NUM.a1, name: "film · copy", targetId: NUM.s1 } });
+  assert.equal(a.status, 200, a.text);
+  mine = posts.slice(n0);
+  assert.equal(mine[0].path, `/${NUM.a1}/copies`);
+  assert.equal(mine[0].params.adset_id, NUM.s1);
+  assert.equal(mine[0].params.status_option, "PAUSED");
+  assert.equal((await api("/api/copy", { method: "POST", body: { kind: "ad", id: NUM.a1, name: "x", targetId: NUM.other } })).status, 403, "target from another account refused");
+  assert.equal((await api("/api/copy", { method: "POST", body: { kind: "ad", id: NUM.a1, name: "" } })).status, 400, "name needed");
+});
+await test("new ad version: same creative and lead form, new words, switched off", async () => {
+  const n0 = posts.length;
+  const r = await api("/api/ad-version", { method: "POST", body: { id: NUM.a1, name: "film · hook-price", message: "New first line", headline: "From 7.88M EGP" } });
+  assert.equal(r.status, 200, r.text);
+  const mine = posts.slice(n0);
+  assert.equal(mine[0].path, "/act_123/adcreatives");
+  const spec = JSON.parse(mine[0].params.object_story_spec);
+  assert.equal(spec.link_data.message, "New first line");
+  assert.equal(spec.link_data.name, "From 7.88M EGP");
+  assert.equal(spec.link_data.image_hash, "abc123");
+  assert.equal(spec.link_data.call_to_action.value.lead_gen_form_id, "500001", "lead form kept");
+  assert.equal(mine[1].path, "/act_123/ads");
+  assert.equal(mine[1].params.status, "PAUSED");
+  assert.equal(mine[1].params.adset_id, NUM.s1);
+  assert.deepEqual(JSON.parse(mine[1].params.creative), { creative_id: "400009" });
+  assert.equal((await api("/api/ad-version", { method: "POST", body: { id: NUM.a1, name: "x" } })).status, 400, "needs new words");
+  assert.equal((await api("/api/copy", { method: "POST", body: { kind: "ad", id: NUM.a1, name: "x" }, port: base + 1 })).status, 403, "read-only blocks copies");
 });
 await test("lead stage to Meta keeps the 17-digit lead id exact", async () => {
   const r = await api("/api/lead-stage", { method: "POST", body: { leadId: "12345678901234567", event: "Valid lead" } });
@@ -570,6 +628,24 @@ await test("demo rules act on the demo ads", async () => {
   assert.equal((await demo.get("/api/rules/history")).length, 1);
   await demo.post("/api/rules/delete", { id: list.rules[0].id });
   assert.equal((await demo.get("/api/rules")).rules.length, 0);
+});
+await test("demo copies and new ad versions start switched off", async () => {
+  const t = await demo.get("/api/tree", { range: "last_7d" });
+  const c = t.campaigns[0];
+  const s = c.adsets[0];
+  await demo.post("/api/copy", { kind: "adset", id: s.id, name: "Copy of A", dailyBudget: 900 });
+  await demo.post("/api/ad-version", { id: s.ads[0].id, name: "v2", headline: "New headline" });
+  await demo.post("/api/copy", { kind: "campaign", id: c.id, name: "Campaign copy" });
+  const t2 = await demo.get("/api/tree", { range: "last_7d" });
+  const copySet = t2.campaigns[0].adsets.find((x) => x.name === "Copy of A");
+  assert.ok(copySet && copySet.status === "PAUSED" && copySet.dailyBudget === 900);
+  assert.ok(!copySet.m, "a copy has no results yet");
+  const v2 = t2.campaigns[0].adsets[0].ads.find((x) => x.name === "v2");
+  assert.equal(v2.status, "PAUSED");
+  assert.equal(v2.creative.title, "New headline");
+  assert.equal(t2.campaigns[1].name, "Campaign copy");
+  assert.equal(t2.campaigns[1].status, "PAUSED");
+  demo.reset();
 });
 await test("demo 'get new leads' brings Meta-shaped leads", async () => {
   const r = await demo.get("/api/leads", { since: 0 });
